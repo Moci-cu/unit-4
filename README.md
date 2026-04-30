@@ -6,7 +6,6 @@ Forked from [samyns/Unit-3](https://github.com/samyns/Unit-3) — NieR:Automata-
 
 - Event-driven Quickshell bar using `Quickshell.Hyprland` (zero polling)
 - Custom widgets: SystemPanel, WallpaperPicker, Player, Menu, Notifications, VolumeBar
-- iwd backend fix for intermittent WiFi (`EnableNetworkConfiguration=false`)
 - Fonts: Ndot57 + Ndot77JPExtended
 - Hiragana workspace labels
 
