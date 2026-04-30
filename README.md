@@ -5,7 +5,7 @@ Forked from [samyns/Unit-3](https://github.com/samyns/Unit-3) — NieR:Automata-
 ## What's different
 
 - Event-driven Quickshell bar using `Quickshell.Hyprland`
-- Improve and widgets: SystemPanel, WallpaperPicker, Player, Menu, Notifications, VolumeBar
+- Improve and added custom widgets: SystemPanel, WallpaperPicker, Player, Menu, Notifications, VolumeBar
 - Fonts: Ndot57 + Ndot77JPExtended
 - Hiragana workspace labels
 - No Waybar
