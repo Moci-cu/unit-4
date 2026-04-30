@@ -1,0 +1,12 @@
+[Unit]
+Description=Quickshell desktop shell
+After=graphical-session.target
+
+[Service]
+Environment=QT_MEDIA_BACKEND=ffmpeg
+ExecStart=/usr/bin/qs
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

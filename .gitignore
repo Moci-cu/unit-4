@@ -1,0 +1,23 @@
+# Backups
+*.bak
+*.swp
+*.tmp
+
+# Large media files
+*.mp4
+*.mov
+*.avi
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Build artifacts
+*.o
+*.so
+*.pyc
+__pycache__/

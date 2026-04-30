@@ -1,0 +1,214 @@
+import QtQuick
+import Quickshell
+import Quickshell.Io
+import Quickshell.Wayland
+import Quickshell.Services.Pipewire
+
+pragma ComponentBehavior: Bound
+
+ShellRoot {
+    id: root
+
+    readonly property int segments: 30
+    readonly property int hoverWidth: 65
+    readonly property int barWidth: 40
+    readonly property int barHeight: 420
+    readonly property int leftOffset: 18
+    readonly property int hideDelay: 400
+
+    readonly property int segFilledW: 14
+    readonly property int segEmptyW:  4
+    readonly property int segEmptyH:  4
+    readonly property int segFilledH: 3
+    readonly property int segActiveW: 22
+    readonly property int segActiveH: 5
+
+    readonly property color colFilled: "#a89a7e"
+    readonly property color colEmpty:  "#c8b89a"
+    readonly property color colBg:     "#0f0d0a"
+
+    property real volume: -1
+    property bool muted: false
+    property bool userInteracting: false
+    property bool autoRevealed: false
+
+    Timer {
+        id: autoHideTimer
+        interval: 1500
+        repeat: false
+        onTriggered: root.autoRevealed = false
+    }
+
+    function triggerAutoReveal() {
+        root.autoRevealed = true
+        autoHideTimer.restart()
+    }
+
+    // ── Pipewire event-driven volume (zero polling) ──
+    PwObjectTracker {
+        id: tracker
+        objects: [Pipewire.defaultAudioSink]
+    }
+
+    readonly property real pipewireVolume: Pipewire.defaultAudioSink?.audio?.volume ?? -1
+    readonly property bool pipewireMuted: Pipewire.defaultAudioSink?.audio?.muted ?? false
+
+    onPipewireVolumeChanged: {
+        if (root.volume >= 0 && pipewireVolume !== root.volume && !root.userInteracting) {
+            root.triggerAutoReveal()
+        }
+        root.volume = pipewireVolume
+    }
+
+    onPipewireMutedChanged: {
+        if (root.volume >= 0 && pipewireMuted !== root.muted && !root.userInteracting) {
+            root.triggerAutoReveal()
+        }
+        root.muted = pipewireMuted
+    }
+
+    function setVolume(v) {
+        v = Math.max(0, Math.min(1, v))
+        root.volume = v
+        var pct = Math.round(v * 100)
+        setVolProc.command = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", pct + "%"]
+        setVolProc.running = true
+    }
+    Process { id: setVolProc; command: ["sh","-c","true"]; running: false }
+
+    Variants {
+        model: Quickshell.screens
+        PanelWindow {
+            id: panel
+            required property var modelData
+            screen: modelData
+            anchors.left: true
+            exclusionMode: ExclusionMode.Ignore
+            color: "transparent"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+            property bool revealed: root.autoRevealed
+                                  || barMouseArea.containsMouse
+                                  || barMouseArea.pressed
+                                  || hideTimer.running
+
+            implicitWidth: revealed
+                ? (root.leftOffset + root.barWidth + 10)
+                : 1
+            implicitHeight: revealed ? (root.barHeight + 40) : 1
+
+            margins.top: revealed ? (modelData.height - implicitHeight) / 2 : -100
+
+            visible: true
+
+            Timer {
+                id: hideTimer
+                interval: root.hideDelay
+                repeat: false
+            }
+
+            Item {
+                id: barContainer
+                width: root.barWidth
+                height: root.barHeight
+                anchors.verticalCenter: parent.verticalCenter
+                x: panel.revealed ? root.leftOffset : -root.barWidth
+                opacity: panel.revealed ? 1 : 0
+
+                Behavior on x       { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: 220 } }
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: root.colBg
+                    opacity: 0.55
+                    border.color: root.colFilled
+                    border.width: 1
+                }
+
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: 6
+                    spacing: 2
+
+                    Repeater {
+                        model: root.segments
+                        Item {
+                            required property int index
+                            width: parent.width
+                            height: (root.barHeight - 12 - (root.segments - 1) * 2) / root.segments
+
+                            property real segLevel: 1 - (index / (root.segments - 1))
+                            property bool filled: root.volume >= segLevel - 0.0001
+                            property real segStep: 1 / (root.segments - 1)
+                            property bool active: filled && (root.volume < segLevel + segStep - 0.0001)
+
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width:  parent.active ? root.segActiveW
+                                      : parent.filled ? root.segFilledW
+                                      :                 root.segEmptyW
+                                height: parent.active ? root.segActiveH
+                                      : parent.filled ? root.segFilledH
+                                      :                 root.segEmptyH
+                                radius: parent.filled ? 1 : 0
+                                color: parent.filled
+                                       ? (root.muted ? "#6e2a2a" : root.colFilled)
+                                       : root.colEmpty
+
+                                Behavior on width   { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+                                Behavior on height  { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+                                Behavior on color   { ColorAnimation  { duration: 220 } }
+                                Behavior on radius  { NumberAnimation { duration: 220 } }
+                            }
+                        }
+                    }
+                }
+
+                MouseArea {
+                    id: barMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    acceptedButtons: Qt.LeftButton
+
+                    function yToVolume(y) {
+                        var m = 6
+                        var h = height - 2 * m
+                        return Math.max(0, Math.min(1, 1 - (y - m) / h))
+                    }
+
+                    onEntered: hideTimer.stop()
+                    onExited:  hideTimer.restart()
+
+                    onPressed: function(e) {
+                        root.userInteracting = true
+                        root.setVolume(yToVolume(e.y))
+                    }
+                    onReleased: root.userInteracting = false
+                    onPositionChanged: function(e) {
+                        if (pressed) root.setVolume(yToVolume(e.y))
+                    }
+                    onWheel: function(e) {
+                        var step = 0.08
+                        if (e.angleDelta.y > 0) root.setVolume(root.volume + step)
+                        else                    root.setVolume(root.volume - step)
+                        hideTimer.restart()
+                    }
+                }
+
+                Text {
+                    anchors.top: parent.top
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.topMargin: -16
+                    text: root.muted ? "MUTE" : Math.round(root.volume * 100) + "%"
+                    font.family: "Ndot 57"
+                    font.pixelSize: 9
+                    font.letterSpacing: 2
+                    color: root.colFilled
+                    opacity: 0.8
+                }
+            }
+        }
+    }
+}

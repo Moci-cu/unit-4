@@ -1,0 +1,11 @@
+[Unit]
+Description=Disable WiFi power save
+After=NetworkManager.service iwd.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'sleep 5 && iw dev wlan0 set power_save off'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target
