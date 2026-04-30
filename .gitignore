@@ -3,11 +3,6 @@
 *.swp
 *.tmp
 
-# Large media files
-*.mp4
-*.mov
-*.avi
-
 # System files
 .DS_Store
 Thumbs.db
