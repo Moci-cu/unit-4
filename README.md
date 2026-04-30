@@ -10,4 +10,8 @@ Forked from [samyns/Unit-3](https://github.com/samyns/Unit-3) — NieR:Automata-
 - Fonts: Ndot57 + Ndot77JPExtended
 - Hiragana workspace labels
 
+## Installation
+
+Install script coming soon.
+
 MIT License (see original repo for full license)
