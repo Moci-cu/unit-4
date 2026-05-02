@@ -31,7 +31,7 @@ Item {
     readonly property color lineVsoft: Qt.rgba(70/255,63/255,46/255,0.12)
     readonly property color lineSoft:  Qt.rgba(70/255,63/255,46/255,0.25)
     readonly property color accent:    "#6e2a2a"
-    readonly property color green:     "#5a7a5a"
+    readonly property color green:     "#8a6a30"
 
     FontLoader { id: mainFont; source: "file://" + Quickshell.env("HOME") + "/.local/share/fonts/Ndot57-Regular.otf" }
     FontLoader { id: jpFont; source: "file://" + Quickshell.env("HOME") + "/.local/share/fonts/Ndot77JPExtended.otf" }

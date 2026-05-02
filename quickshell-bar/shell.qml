@@ -62,6 +62,11 @@ ShellRoot {
     readonly property var battery: UPower.displayDevice
     readonly property string batVal: root.battery && root.battery.ready
         ? Math.round(root.battery.percentage * 100) + "%" : "--"
+    readonly property string batPower: root.pwrSmoothed !== 0
+        ? (root.pwrSmoothed > 0 ? "+" : "") + Math.abs(root.pwrSmoothed).toFixed(1) + "W"
+        : (root.battery && root.battery.ready
+            ? (root.battery.changeRate > 0 ? "+" : "") + Math.abs(root.battery.changeRate).toFixed(1) + "W"
+            : "--")
     readonly property bool   hasBattery: root.battery && root.battery.ready
     readonly property string batStatus: root.battery && root.battery.ready
         ? UPowerDeviceState.toString(root.battery.state) : "Unknown"
@@ -96,6 +101,33 @@ ShellRoot {
         return false
     }
 
+    // ── CPU Temperature (FileView, 0 fork) ──
+    property string cpuTemp: "--"
+    property int cpuTempNum: 0
+    Timer { interval: 5000; running: true; repeat: true; onTriggered: tempFile.reload() }
+    FileView {
+        id: tempFile
+        path: "/sys/class/hwmon/hwmon5/temp1_input"
+        onLoaded: { root.cpuTempNum = Math.round(parseInt(text().trim()) / 1000); root.cpuTemp = root.cpuTempNum + "°" }
+    }
+
+    // ── PWR from sysfs (current_now × voltage_now, 0 fork) ──
+    property real pwrSmoothed: 0
+    property int pwrVoltage: 1
+    Timer { interval: 5000; running: true; repeat: true; onTriggered: pwrCur.reload() }
+    FileView {
+        id: pwrCur
+        path: "/sys/class/power_supply/BAT0/current_now"
+        onLoaded: { var cur = parseInt(text().trim()) || 0; if (cur > 0 && root.pwrVoltage > 1000000) root.pwrSmoothed = -(cur * root.pwrVoltage) / 1e12 }
+    }
+    Timer { interval: 300; running: true; repeat: false; onTriggered: pwrVolt.reload() }
+    Connections { target: root.battery; enabled: root.battery !== null; function onStateChanged() { pwrVolt.reload() } }
+    FileView {
+        id: pwrVolt
+        path: "/sys/class/power_supply/BAT0/voltage_now"
+        onLoaded: { root.pwrVoltage = parseInt(text().trim()) || 1 }
+    }
+
     property int lastCpuUsed:  0
     property int lastCpuTotal: 0
 
@@ -111,8 +143,11 @@ ShellRoot {
             if (p.length < 5 || p[0] !== "cpu") return
             var used  = parseInt(p[1]) + parseInt(p[2]) + parseInt(p[3])
             var total = used + parseInt(p[4])
-            if (root.lastCpuTotal > 0 && total > root.lastCpuTotal)
+            if (root.lastCpuTotal > 0 && total > root.lastCpuTotal) {
                 root.cpuVal = Math.round(100 * (used - root.lastCpuUsed) / (total - root.lastCpuTotal)) + "%"
+            } else if (root.lastCpuTotal === 0) {
+                root.cpuVal = Math.round(100 * used / total) + "%"
+            }
             root.lastCpuUsed  = used
             root.lastCpuTotal = total
         }
@@ -296,7 +331,7 @@ ShellRoot {
                     anchors.right: parent.right
                     anchors.rightMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 14
+                    spacing: 9
 
                     Text {
                         font.family: "Ndot 57"
@@ -309,7 +344,7 @@ ShellRoot {
                         anchors.verticalCenter: parent.verticalCenter
                     }
 
-                    Item { width: 4; height: 1 }
+                    Item { width: 2; height: 1 }
 
                     Item {
                         anchors.verticalCenter: parent.verticalCenter
@@ -335,7 +370,7 @@ ShellRoot {
                                 font.weight: Font.Bold
                                 font.letterSpacing: 1.2
                                 opacity: 0.8
-                                color: root.wifiSsid ? "#60a880" : root.inkSoft
+                                color: root.wifiSsid ? "#8a6a30" : root.inkSoft
                                 text: root.wifiSsid || "---"
                                 elide: Text.ElideRight
                                 anchors.verticalCenter: parent.verticalCenter
@@ -348,7 +383,7 @@ ShellRoot {
                         }
                     }
 
-                    Item { width: 4; height: 1 }
+                    Item { width: 2; height: 1 }
 
                     Item {
                         anchors.verticalCenter: parent.verticalCenter
@@ -373,7 +408,7 @@ ShellRoot {
                                 font.weight: Font.Bold
                                 font.letterSpacing: 1.2
                                 opacity: 0.8
-                                color: root.btOn ? (root.btConn ? "#60a880" : root.inkSoft) : root.inkSoft
+                                color: root.btOn ? (root.btConn ? "#8a6a30" : root.inkSoft) : root.inkSoft
                                 text: root.btOn ? (root.btConn ? "ON" : "--") : "OFF"
                                 anchors.verticalCenter: parent.verticalCenter
                             }
@@ -385,7 +420,7 @@ ShellRoot {
                         }
                     }
 
-                    Item { width: 4; height: 1 }
+                    Item { width: 2; height: 1 }
 
                     Text {
                         font.family: "Ndot 57"
@@ -403,12 +438,12 @@ ShellRoot {
                         font.weight: Font.Bold
                         font.letterSpacing: 1.2
                         opacity: 0.8
-                        color: root.cpuVal !== "--%" ? root.inkSoft : root.lineSoft
+                        color: parseFloat(root.cpuVal) > 12 ? "#6e2a2a" : (root.cpuVal !== "--%" ? root.inkSoft : root.lineSoft)
                         text: root.cpuVal
                         anchors.verticalCenter: parent.verticalCenter
                     }
 
-                    Item { width: 4; height: 1 }
+                    Item { width: 2; height: 1 }
 
                     Text {
                         font.family: "Ndot 57"
@@ -431,7 +466,7 @@ ShellRoot {
                         anchors.verticalCenter: parent.verticalCenter
                     }
 
-                    Item { width: 4; height: 1 }
+                    Item { width: 2; height: 1 }
 
                     Text {
                         font.family: "Ndot 57"
@@ -456,6 +491,32 @@ ShellRoot {
                         text: root.batVal
                         anchors.verticalCenter: parent.verticalCenter
                         visible: root.hasBattery
+                    }
+
+                    Item { width: 2; height: 1 }
+
+                    Text {
+                        font.family: "Ndot 57"; font.pixelSize: 14; font.weight: Font.Bold; font.letterSpacing: 1.2
+                        color: root.inkStrong; opacity: 0.85; text: "PWR"; anchors.verticalCenter: parent.verticalCenter
+                        visible: root.hasBattery
+                    }
+                    Text {
+                        font.family: "Ndot 57"; font.pixelSize: 14; font.weight: Font.Bold; font.letterSpacing: 1.2
+                        opacity: 0.8; text: root.batPower; anchors.verticalCenter: parent.verticalCenter
+                        color: Math.abs(parseFloat(root.batPower)) > 10 ? "#6e2a2a" : (root.batStatus === "Charging" ? "#60a880" : root.inkSoft)
+                        visible: root.hasBattery
+                    }
+
+                    Item { width: 2; height: 1 }
+
+                    Text {
+                        font.family: "Ndot 57"; font.pixelSize: 14; font.weight: Font.Bold; font.letterSpacing: 1.2
+                        color: root.inkStrong; opacity: 0.85; text: "TEMP"; anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Text {
+                        font.family: "Ndot 57"; font.pixelSize: 14; font.weight: Font.Bold; font.letterSpacing: 1.2
+                        opacity: 0.8; text: root.cpuTemp || "--"; anchors.verticalCenter: parent.verticalCenter
+                        color: root.cpuTempNum > 55 ? "#6e2a2a" : root.inkSoft
                     }
                 }
             }

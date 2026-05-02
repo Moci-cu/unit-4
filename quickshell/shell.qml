@@ -17,6 +17,9 @@ ShellRoot {
     // ── VOLUMEBAR ──
     VolumeBar {}
 
+    // ── BRIGHTNESSBAR ──
+    BrightnessBar {}
+
     // ── PLAYERCTL ──
     property bool   playerVisible: false
     property bool   playerOnTop:   false
