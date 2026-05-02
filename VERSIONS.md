@@ -10,7 +10,6 @@ dependencies, last tested on 2026-04-25.
 | Hyprland          | 0.54.3-2             |
 | Hyprlock          | 0.9.5-1              |
 | Hypridle          | 0.1.7-8              |
-| Waybar            | 0.15.0-2             |
 | Kitty             | 0.46.2-1             |
 | Quickshell (git)  | 0.2.0.r136.gfb08ece-1 |
 | awww (AUR)        | 0.12.0-1             |

@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../theme"
 
 pragma ComponentBehavior: Bound
 
@@ -16,15 +17,15 @@ Item {
     readonly property int panelH: 280
     readonly property int gridSize: 12
 
-    readonly property color paper:     "#d6cfb5"
-    readonly property color ink:       "#463f2e"
-    readonly property color inkStrong: "#2e2a1f"
-    readonly property color inkSoft:   "#7a7358"
-    readonly property color lineVsoft: Qt.rgba(70/255,63/255,46/255,0.12)
-    readonly property color lineSoft:  Qt.rgba(70/255,63/255,46/255,0.25)
-    readonly property color accent:    "#6e2a2a"
+    readonly property color paper:     Theme.paper
+    readonly property color ink:       Theme.ink
+    readonly property color inkStrong: Theme.inkStrong
+    readonly property color inkSoft:   Theme.inkSoft
+    readonly property color lineVsoft: Theme.lineVsoft
+    readonly property color lineSoft:  Theme.lineSoft
+    readonly property color accent:    Theme.accent
 
-    FontLoader { id: mainFont; source: "/home/mocicu/.local/share/fonts/Ndot57-Regular.otf" }
+    FontLoader { id: mainFont; source: "file://" + Quickshell.env("HOME") + "/.local/share/fonts/Ndot57-Regular.otf" }
     readonly property string ff: mainFont.name
 
     property string cpuVal: "--"

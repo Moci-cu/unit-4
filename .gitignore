@@ -16,3 +16,6 @@ Thumbs.db
 *.so
 *.pyc
 __pycache__/
+
+# Generated media
+*.mp4

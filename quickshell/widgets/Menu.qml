@@ -1,6 +1,8 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
+import "../theme"
 
 pragma ComponentBehavior: Bound
 
@@ -19,21 +21,31 @@ Item {
     property int    focusIdx:   0
     property string clockStr:   "--:--:--"
 
-    readonly property color paper:     "#d6cfb5"
-    readonly property color ink:       "#463f2e"
-    readonly property color inkStrong: "#2e2a1f"
-    readonly property color inkSoft:   "#7a7358"
-    readonly property color lineSoft:  Qt.rgba(70/255,63/255,46/255,0.25)
-    readonly property color lineVsoft: Qt.rgba(70/255,63/255,46/255,0.12)
-    readonly property color accent:    "#6e2a2a"
+    readonly property color paper:     Theme.paper
+    readonly property color ink:       Theme.ink
+    readonly property color inkStrong: Theme.inkStrong
+    readonly property color inkSoft:   Theme.inkSoft
+    readonly property color lineSoft:  Theme.lineSoft
+    readonly property color lineVsoft: Theme.lineVsoft
+    readonly property color accent:    Theme.accent
 
-    FontLoader { id: mainFont; source: "/home/mocicu/.local/share/fonts/Ndot57-Regular.otf" }
+    FontLoader { id: mainFont; source: "file://" + Quickshell.env("HOME") + "/.local/share/fonts/Ndot57-Regular.otf" }
     readonly property string ff: mainFont.name
 
     property var  apps: []
     property bool appsLoaded: false
     property bool nightMode: false
     property int  nightTemp: 4000
+
+    // ── Special system actions (not real apps) ──
+    readonly property var specialItems: [
+        { id: "S01", name: "Lock Screen",      cmd: "__lock__",      desktopId: "__lock__",      meta: "quickshell", keywords: "lock screen lockscreen",            icon: "⬡", cat: "sys" },
+        { id: "S02", name: "Logout",           cmd: "__logout__",    desktopId: "__logout__",    meta: "hyprland",   keywords: "logout exit hyprland session",      icon: "✕", cat: "sys" },
+        { id: "S03", name: "Sleep",            cmd: "__sleep__",     desktopId: "__sleep__",     meta: "systemctl",  keywords: "sleep suspend standby",             icon: "◈", cat: "sys" },
+        { id: "S04", name: "Reboot",           cmd: "__reboot__",    desktopId: "__reboot__",    meta: "systemctl",  keywords: "reboot restart",                    icon: "↻", cat: "sys" },
+        { id: "S05", name: "Shut Down",        cmd: "__shutdown__",  desktopId: "__shutdown__",  meta: "systemctl",  keywords: "shutdown poweroff halt power off",  icon: "⏻", cat: "sys" },
+        { id: "S06", name: "Kill All Apps", cmd: "__killactive__",desktopId: "__killactive__", meta: "hyprland",   keywords: "kill close terminate workspace apps",icon: "✕", cat: "sys" }
+    ]
 
     readonly property var catLabels: ({
         "all":"ALL","dev":"DEVELOP","sys":"SYSTEM","net":"NETWORK",
@@ -46,15 +58,25 @@ Item {
     readonly property var catKeys: {
         var present = {"all": true}
         for (var i = 0; i < apps.length; i++) present[apps[i].cat] = true
+        for (var j = 0; j < specialItems.length; j++) present[specialItems[j].cat] = true
         return catOrder.filter(function(k) { return present[k] })
+    }
+
+    function _allItems() {
+        var merged = apps.slice()
+        merged.push.apply(merged, specialItems)
+        return merged
     }
 
     readonly property var filteredApps: {
         var q = searchQuery.toLowerCase().trim()
-        return apps.filter(function(a) {
+        return _allItems().filter(function(a) {
             var catOk = currentCat === "all" || a.cat === currentCat
-            var qOk = !q || a.name.toLowerCase().indexOf(q) >= 0 || a.meta.toLowerCase().indexOf(q) >= 0
-            return catOk && qOk
+            if (!q) return catOk
+            var nameOk = a.name.toLowerCase().indexOf(q) >= 0
+            var metaOk = (a.meta || "").toLowerCase().indexOf(q) >= 0
+            var kwOk   = (a.keywords || "").toLowerCase().indexOf(q) >= 0
+            return catOk && (nameOk || metaOk || kwOk)
         })
     }
 
@@ -123,18 +145,51 @@ Item {
 
     function launchApp(cmd) {
         if (!cmd) return
-        var parts = cmd.trim().split(/\s+/)
-        if (parts.length === 0 || parts[0] === "") return
-        Quickshell.execDetached(parts)
+        if (cmd === "__lock__") {
+            Quickshell.execDetached([Quickshell.env("HOME") + "/.config/quickshell/lock.sh"])
+        } else if (cmd === "__logout__") {
+            Quickshell.execDetached(["hyprctl", "dispatch", "exit"])
+        } else if (cmd === "__sleep__") {
+            Quickshell.execDetached(["systemctl", "suspend"])
+        } else if (cmd === "__reboot__") {
+            Quickshell.execDetached(["systemctl", "reboot"])
+        } else if (cmd === "__shutdown__") {
+            Quickshell.execDetached(["systemctl", "poweroff"])
+        } else if (cmd === "__killactive__") {
+            root.killActiveApps()
+        } else {
+            var parts = cmd.trim().split(/\s+/)
+            if (parts.length === 0 || parts[0] === "") return
+            Quickshell.execDetached(parts)
+        }
         root.closeMenu()
     }
 
     function launch(cmd) {
         if (!cmd || cmd === "") return
-        var parts = cmd.trim().split(/\s+/)
-        if (parts.length === 0 || parts[0] === "") return
-        Quickshell.execDetached(parts)
+        Quickshell.execDetached(cmd.trim().split(/\s+/))
         root.closeMenu()
+    }
+
+    function killActiveApps() {
+        var vals = Hyprland.toplevels.values
+        var qs = "quickshell"
+        var cmds = []
+        for (var i = 0; i < vals.length; i++) {
+            var t = vals[i]
+            if (!t) continue
+            var tc = t.clazz
+            if (tc && tc.toLowerCase().indexOf(qs) >= 0) continue
+            var addr = t.address
+            if (addr) {
+                var a = String(addr)
+                if (a.indexOf("0x") !== 0) a = "0x" + a
+                cmds.push("dispatch killwindow address:" + a)
+            }
+        }
+        root.closeMenu()
+        if (cmds.length > 0)
+            Quickshell.execDetached(["hyprctl", "--batch", cmds.join("; ")])
     }
 
     property string nightStateFile: Quickshell.env("HOME") + "/.config/quickshell/night-mode.state"
@@ -353,7 +408,7 @@ Item {
                                 }
                                 Text {
                                     anchors { right:parent.right; rightMargin:12; verticalCenter:parent.verticalCenter }
-                                    text: root.apps.filter(function(a){ return modelData==="all"||a.cat===modelData }).length.toString().padStart(2,"0")
+                                    text: root._allItems().filter(function(a){ return modelData==="all"||a.cat===modelData }).length.toString().padStart(2,"0")
                                     font.family:root.ff; font.pixelSize:13; font.letterSpacing:1
                                     color: parent.isActive ? Qt.rgba(214/255,207/255,181/255,0.6) : Qt.rgba(122/255,115/255,88/255,0.5)
                                 }

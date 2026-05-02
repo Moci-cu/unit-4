@@ -1,0 +1,949 @@
+import QtQuick
+import Quickshell
+import Quickshell.Io
+import Quickshell.Bluetooth
+
+pragma ComponentBehavior: Bound
+
+Item {
+    id: root
+
+    property bool panelOpen: false
+    property bool animRunning: false
+    property real screenW: 1920
+    property real screenH: 1080
+    property string currentTab: "wifi"
+
+    readonly property int panelW: 360
+    readonly property int panelH: 440
+    readonly property int gridSize: 12
+
+    readonly property color paper:     "#d6cfb5"
+    readonly property color ink:       "#463f2e"
+    readonly property color inkStrong: "#2e2a1f"
+    readonly property color inkSoft:   "#7a7358"
+    readonly property color lineVsoft: Qt.rgba(70/255,63/255,46/255,0.12)
+    readonly property color lineSoft:  Qt.rgba(70/255,63/255,46/255,0.25)
+    readonly property color accent:    "#6e2a2a"
+    readonly property color green:     "#5a7a5a"
+
+    FontLoader { id: mainFont; source: "file://" + Quickshell.env("HOME") + "/.local/share/fonts/Ndot57-Regular.otf" }
+    FontLoader { id: jpFont; source: "file://" + Quickshell.env("HOME") + "/.local/share/fonts/Ndot77JPExtended.otf" }
+    readonly property string ff:   mainFont.name
+    readonly property string ffjp: jpFont.name
+
+    // ── WiFi (nmcli Process, polling 4s) ──
+    property bool   wifiPower: false
+    property var    wifiConnected: null
+    property var    wifiNetworks: []
+    readonly property bool wifiConnecting: wifiConnect.running || wifiScan.running || connectTimer.running
+
+    // ── Password input ──
+    property bool   showPassword: false
+    property string targetSsid: ""
+    property string targetSecurity: ""
+    property string wifiError: ""
+
+    // ── BT (native Bluetooth API, reactive) ──
+    readonly property var btAdp: Bluetooth.defaultAdapter
+    readonly property bool btPower: root.btAdp ? root.btAdp.enabled : false
+    readonly property bool btDisabled: root.btAdp ? root.btAdp.state === BluetoothAdapterState.Disabled : true
+    readonly property bool btBlocked: root.btAdp ? root.btAdp.state === BluetoothAdapterState.Blocked : false
+    readonly property bool btDiscovering: root.btAdp ? root.btAdp.discovering : false
+
+    signal connectWifi(string ssid, string password)
+    signal connectBt(var device)
+
+    // ── WiFi polling ──
+    Timer {
+        interval: 4000
+        running: root.panelOpen && root.currentTab === "wifi"
+        repeat: true
+        onTriggered: wifiProc.running = true
+    }
+    Process {
+        id: wifiProc
+        command: ["bash", Qt.resolvedUrl("../scripts/wifi_poller.sh").toString().replace("file://","")]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    var data = JSON.parse(this.text.trim())
+                    root.wifiPower = data.power === "on"
+                    root.wifiConnected = data.connected
+                    root.wifiNetworks = data.networks || []
+                } catch(e) {
+                    console.warn("wifi poller parse error:", e, "raw:", this.text)
+                    root.wifiNetworks = []
+                    root.wifiConnected = null
+                    root.wifiPower = false
+                }
+            }
+        }
+    }
+
+    // ── WiFi connect process ──
+    Process {
+        id: wifiConnect
+        command: []
+        environment: ({ LANG: "C", LC_ALL: "C" })
+        running: false
+        property string errText: ""
+        property string outText: ""
+        stdout: StdioCollector {
+            onStreamFinished: {
+                wifiConnect.outText = this.text
+                if (wifiConnect.outText.includes("Secrets were required")) {
+                    root.showPassword = true
+                }
+            }
+        }
+        stderr: StdioCollector {
+            onStreamFinished: {
+                wifiConnect.errText = this.text
+                if (wifiConnect.errText.includes("Secrets were required")) {
+                    root.showPassword = true
+                }
+            }
+        }
+        onExited: {
+            if (root.connRestartPending) {
+                root.connRestartPending = false
+                return
+            }
+            if (root.showPassword) return
+            var out = wifiConnect.outText.trim()
+            var err = wifiConnect.errText.trim()
+            if (exitCode !== 0 && out) {
+                var lines = out.split("\n")
+                root.wifiError = lines[lines.length - 1].trim().substring(0, 120)
+                errorTimer.restart()
+                root.targetSsid = ""
+            } else if (exitCode !== 0 && err) {
+                var els = err.split("\n")
+                root.wifiError = els[els.length - 1].trim().substring(0, 120)
+                errorTimer.restart()
+                root.targetSsid = ""
+            } else if (exitCode === 0) {
+                root.targetSsid = ""
+            }
+            wifiProc.running = true
+        }
+    }
+
+    Timer {
+        id: errorTimer
+        interval: 6000; running: false; repeat: false
+        onTriggered: { root.wifiError = "" }
+    }
+
+    property bool connRestartPending: false
+
+    function doConnectCmd(cmd) {
+        root.wifiError = ""
+        if (wifiConnect.running) {
+            root.connRestartPending = true
+            wifiConnect.running = false
+            connRestart.cmd = cmd
+            connRestart.restart()
+        } else {
+            wifiConnect.command = cmd
+            wifiConnect.running = true
+        }
+    }
+
+    Timer {
+        id: connRestart
+        interval: 250; running: false; repeat: false
+        property var cmd: []
+        onTriggered: {
+            wifiConnect.command = cmd
+            wifiConnect.running = true
+        }
+    }
+
+    // ── Scan-before-connect flow ──
+    Process {
+        id: wifiScan
+        command: ["nmcli", "device", "wifi", "rescan"]
+        running: false
+        onExited: connectTimer.restart()
+    }
+
+    Timer {
+        id: connectTimer
+        interval: 2500; running: false; repeat: false
+        onTriggered: doConnectCmd(["nmcli", "device", "wifi", "connect", root.targetSsid])
+    }
+
+    function tryConnect(ssid) {
+        root.targetSsid = ssid
+        root.showPassword = false
+        root.wifiError = ""
+        if (wifiScan.running) wifiScan.running = false
+        wifiScan.running = true
+    }
+
+    function doConnectWithPassword(pw) {
+        root.showPassword = false
+        pwInput.text = ""
+        doConnectCmd(["nmcli", "device", "wifi", "connect", root.targetSsid, "password", pw])
+    }
+
+    // ── Backdrop (click to close) ──
+    Rectangle {
+        anchors.fill: parent
+        color: root.panelOpen ? Qt.rgba(184/255,175/255,147/255,0.35) : "transparent"
+        Behavior on color { ColorAnimation { duration: 220 } }
+        MouseArea {
+            anchors.fill: parent
+            enabled: root.panelOpen
+            onClicked: root.closePanel()
+        }
+    }
+
+    // ── Panel container (top-right corner) ──
+    Item {
+        id: panelHost
+        x: root.screenW - root.panelW - 12
+        y: 50
+        width: root.panelW
+        height: root.panelH
+        clip: true
+        visible: root.panelOpen || root.animRunning
+        opacity: root.panelOpen ? 1 : 0
+        scale: root.panelOpen ? 1 : 0.96
+
+        Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+        Behavior on scale   { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+
+        // Panel bg
+        Rectangle {
+            anchors.fill: parent
+            color: root.paper
+            border.color: root.ink
+            border.width: 1
+
+            // Corner dots
+            Rectangle { x: -1; y: -1; width: 2; height: 2; color: root.ink }
+            Rectangle { x: parent.width - 1; y: -1; width: 2; height: 2; color: root.ink }
+            Rectangle { x: -1; y: parent.height - 1; width: 2; height: 2; color: root.ink }
+            Rectangle { x: parent.width - 1; y: parent.height - 1; width: 2; height: 2; color: root.ink }
+
+            // Grid overlay
+            Repeater {
+                model: Math.floor(parent.width / root.gridSize) + 1
+                Rectangle { required property int index; x: index * root.gridSize; y: 0; width: 1; height: parent.height; color: root.lineVsoft }
+            }
+            Repeater {
+                model: Math.floor(parent.height / root.gridSize) + 1
+                Rectangle { required property int index; x: 0; y: index * root.gridSize; width: parent.width; height: 1; color: root.lineVsoft }
+            }
+
+            // Header
+            Item {
+                id: header
+                width: parent.width
+                height: 42
+                Row {
+                    anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: 18; rightMargin: 18 }
+                    Row {
+                        spacing: 8; anchors.verticalCenter: parent.verticalCenter
+                        Text { text: "◈"; font.family: root.ff; font.pixelSize: 11; color: root.accent; anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: "NETWORK"; font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 3; font.weight: Font.Medium; color: root.inkStrong; anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle { width: 16; height: 1; color: root.inkSoft; anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: "ネット"; font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 2; color: root.inkSoft; anchors.verticalCenter: parent.verticalCenter }
+                    }
+                    Item { width: parent.width - 280; height: 1 }
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "×"; font.family: root.ff; font.pixelSize: 14; color: root.inkSoft
+                        MouseArea {
+                            anchors.fill: parent
+                            anchors.margins: -6
+                            onClicked: root.closePanel()
+                        }
+                    }
+                }
+                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: root.lineSoft }
+            }
+
+            // Tab bar
+            Item {
+                id: tabBar
+                anchors { top: header.bottom; left: parent.left; right: parent.right }
+                height: 34
+
+                Row {
+                    anchors.fill: parent
+
+                    Rectangle {
+                        width: parent.width / 2; height: parent.height
+                        color: root.currentTab === "wifi" ? root.ink : "transparent"
+                        Behavior on color { ColorAnimation { duration: 150 } }
+
+                        Rectangle {
+                            anchors.bottom: parent.bottom
+                            width: parent.width; height: 2
+                            color: root.currentTab === "wifi" ? root.accent : root.lineSoft
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "WiFi"
+                            font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 2; font.weight: Font.Medium
+                            color: root.currentTab === "wifi" ? root.paper : root.inkSoft
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: { root.currentTab = "wifi" }
+                        }
+                    }
+
+                    Rectangle {
+                        width: parent.width / 2; height: parent.height
+                        color: root.currentTab === "bt" ? root.ink : "transparent"
+                        Behavior on color { ColorAnimation { duration: 150 } }
+
+                        Rectangle {
+                            anchors.bottom: parent.bottom
+                            width: parent.width; height: 2
+                            color: root.currentTab === "bt" ? root.accent : root.lineSoft
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "BT"
+                            font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 2; font.weight: Font.Medium
+                            color: root.currentTab === "bt" ? root.paper : root.inkSoft
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: { root.currentTab = "bt" }
+                        }
+                    }
+                }
+            }
+
+            // ── Body ──
+            Item {
+                id: body
+                anchors { top: tabBar.bottom; bottom: footer.top; left: parent.left; right: parent.right }
+
+                // ────── WiFi Tab ──────
+                Item {
+                    anchors { fill: parent; margins: 12 }
+                    opacity: root.currentTab === "wifi" ? 1 : 0
+                    visible: opacity > 0
+                    Behavior on opacity { NumberAnimation { duration: 120 } }
+
+                    // Connected info
+                    Column {
+                        id: wifiInfo
+                        visible: root.wifiConnected && root.wifiConnected.ssid
+                        width: parent.width
+                        spacing: 6
+
+                        Rectangle {
+                            width: parent.width; height: wifiInfoCol.implicitHeight + 16
+                            color: Qt.rgba(70/255,63/255,46/255,0.08)
+                            border.color: root.lineSoft; border.width: 1
+
+                            Column {
+                                id: wifiInfoCol
+                                anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
+                                spacing: 4
+
+                                Text {
+                                    text: "Connected: " + (root.wifiConnected ? root.wifiConnected.ssid : "")
+                                    font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 1; font.weight: Font.Medium
+                                    color: root.inkStrong; elide: Text.ElideRight
+                                    width: parent.width
+                                }
+                                Row {
+                                    spacing: 16
+                                    Text {
+                                        text: root.wifiConnected ? (root.wifiConnected.icon || "○") + " " + (parseInt(root.wifiConnected.signal) || 0) + "%" : ""
+                                        font.family: root.ff; font.pixelSize: 12; color: root.inkSoft
+                                    }
+                                    Text {
+                                        text: root.wifiConnected ? root.wifiConnected.security || "" : ""
+                                        font.family: root.ff; font.pixelSize: 12; color: root.inkSoft
+                                    }
+                                }
+                                Text {
+                                    text: root.wifiConnected && root.wifiConnected.ip ? "IP " + root.wifiConnected.ip : ""
+                                    font.family: root.ff; font.pixelSize: 12; color: root.inkSoft
+                                }
+                            }
+                        }
+
+                        // Disconnect button
+                        Rectangle {
+                            width: parent.width; height: 30
+                            color: disconnectMA.containsMouse ? root.accent : "transparent"
+                            border.color: root.lineSoft; border.width: 1
+                            Behavior on color { ColorAnimation { duration: 120 } }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "Disconnect"
+                                font.family: root.ff; font.pixelSize: 12; font.letterSpacing: 2
+                                color: disconnectMA.containsMouse ? root.paper : root.inkSoft
+                            }
+                            MouseArea {
+                                id: disconnectMA
+                                anchors.fill: parent; hoverEnabled: true
+                                onClicked: {
+                                    wifiConnect.command = ["nmcli", "connection", "down", root.wifiConnected ? root.wifiConnected.ssid : ""]
+                                    wifiConnect.running = true
+                                }
+                            }
+                        }
+
+                        Rectangle { width: parent.width; height: 1; color: root.lineSoft }
+                    }
+
+                    // Error display
+                    Rectangle {
+                        visible: root.wifiError !== ""
+                        width: parent.width; height: 34
+                        color: Qt.rgba(110/255,42/255,42/255,0.15)
+                        border.color: root.accent; border.width: 1
+
+                        Text {
+                            anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
+                            verticalAlignment: Text.AlignVCenter
+                            text: root.wifiError
+                            font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 1; color: root.accent
+                            elide: Text.ElideRight
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: root.wifiError = ""
+                        }
+                    }
+
+                    // Password input
+                    Item {
+                        id: pwBox
+                        visible: root.showPassword
+                        width: parent.width; height: 80
+
+                        Rectangle {
+                            width: parent.width; height: parent.height
+                            color: Qt.rgba(70/255,63/255,46/255,0.08)
+                            border.color: root.accent; border.width: 1
+
+                            Column {
+                                anchors { fill: parent; leftMargin: 10; rightMargin: 10; topMargin: 8 }
+                                spacing: 6
+
+                                Text {
+                                    text: "Password for  " + root.targetSsid
+                                    font.family: root.ff; font.pixelSize: 12; font.letterSpacing: 1; color: root.inkStrong
+                                }
+                                Row {
+                                    spacing: 6
+                                    Rectangle {
+                                        width: 190; height: 28
+                                        color: root.paper
+                                        border.color: root.ink; border.width: 1
+
+                                        TextInput {
+                                            id: pwInput
+                                            anchors { fill: parent; margins: 6 }
+                                            font.family: root.ff; font.pixelSize: 13; color: root.inkStrong
+                                            echoMode: TextInput.Password
+                                            focus: root.showPassword
+                                            onAccepted: {
+                                                root.doConnectWithPassword(text)
+                                                text = ""
+                                            }
+                                        }
+                                    }
+                                    Rectangle {
+                                        width: 60; height: 28
+                                        color: pwBtnMa.containsMouse ? root.ink : "transparent"
+                                        border.color: root.ink; border.width: 1
+                                        Behavior on color { ColorAnimation { duration: 100 } }
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "OK"
+                                            font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 1; font.weight: Font.Bold
+                                            color: pwBtnMa.containsMouse ? root.paper : root.ink
+                                        }
+                                        MouseArea {
+                                            id: pwBtnMa
+                                            anchors.fill: parent; hoverEnabled: true
+                                            onClicked: {
+                                                root.doConnectWithPassword(pwInput.text)
+                                                pwInput.text = ""
+                                            }
+                                        }
+                                    }
+                                    Rectangle {
+                                        width: 28; height: 28
+                                        color: pwCancelMA.containsMouse ? root.accent : "transparent"
+                                        border.color: root.accent; border.width: 1
+                                        Behavior on color { ColorAnimation { duration: 100 } }
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "×"
+                                            font.family: root.ff; font.pixelSize: 14; color: pwCancelMA.containsMouse ? root.paper : root.accent
+                                        }
+                                        MouseArea {
+                                            id: pwCancelMA
+                                            anchors.fill: parent; hoverEnabled: true
+                                            onClicked: {
+                                                root.showPassword = false
+                                                root.targetSsid = ""
+                                                pwInput.text = ""
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Network list header
+                    Row {
+                        width: parent.width
+                        visible: !root.showPassword
+                        anchors.top: root.wifiConnected && root.wifiConnected.ssid ? wifiInfo.bottom : parent.top
+                        anchors.topMargin: 6
+
+                        Text {
+                            text: root.wifiConnected
+                                ? "Available Networks"
+                                : (root.wifiPower ? "Networks" : "WiFi is OFF")
+                            font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 2; color: root.inkSoft
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Item { width: Math.max(0, parent.width - 180); height: 1 }
+
+                        Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 44; height: 20
+                            color: scanMA.containsMouse ? root.ink : "transparent"
+                            border.color: root.lineSoft; border.width: 1
+                            visible: root.wifiPower
+                            Behavior on color { ColorAnimation { duration: 100 } }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "Scan"
+                                font.family: root.ff; font.pixelSize: 9; font.letterSpacing: 1
+                                color: scanMA.containsMouse ? root.paper : root.inkSoft
+                            }
+                            MouseArea {
+                                id: scanMA
+                                anchors.fill: parent; hoverEnabled: true
+                                onClicked: wifiProc.running = true
+                            }
+                        }
+                    }
+
+                    // Network list
+                    ListView {
+                        id: wifiList
+                        visible: !root.showPassword
+                        anchors {
+                            top: root.showPassword
+                                ? pwBox.bottom
+                                : (root.wifiConnected && root.wifiConnected.ssid
+                                    ? wifiInfo.bottom
+                                    : parent.top)
+                            topMargin: 26
+                            bottom: parent.bottom; left: parent.left; right: parent.right
+                        }
+                        clip: true; spacing: 2
+                        model: root.wifiNetworks
+
+                        delegate: Rectangle {
+                            required property var modelData
+                            required property int index
+                            readonly property bool isConnecting: root.wifiConnecting && root.targetSsid === (modelData.ssid || modelData.id)
+                            width: wifiList.width; height: 34
+                            color: isConnecting
+                                ? Qt.rgba(90/255,122/255,90/255,0.12)
+                                : (wfMA.containsMouse ? Qt.rgba(70/255,63/255,46/255,0.08) : "transparent")
+                            Behavior on color { ColorAnimation { duration: 100 } }
+
+                            Rectangle {
+                                anchors.bottom: parent.bottom
+                                x: 8; width: parent.width - 16; height: 1; color: root.lineVsoft
+                                visible: index < wifiList.count - 1
+                            }
+
+                            Row {
+                                anchors { fill: parent; leftMargin: 6; rightMargin: 4 }
+                                spacing: 6
+
+                                Item {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 16; height: 16
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: isConnecting ? "◈" : (modelData.icon || "○")
+                                        font.family: root.ff; font.pixelSize: isConnecting ? 10 : 14
+                                        color: isConnecting ? root.green : root.ink
+                                        RotationAnimation on rotation {
+                                            running: isConnecting; loops: Animation.Infinite
+                                            from: 0; to: 360; duration: 1200
+                                        }
+                                    }
+                                }
+                                Column {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width - 16 - 6 - 60 - 4
+                                    spacing: 1
+                                    Text {
+                                        text: modelData.ssid || modelData.id || ""
+                                        font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 1; font.weight: Font.Medium
+                                        color: root.inkStrong; elide: Text.ElideRight
+                                        width: parent.width
+                                    }
+                                    Text {
+                                        text: modelData.security || ""; font.family: root.ff
+                                        font.pixelSize: 10; color: root.inkSoft
+                                        visible: modelData.security && modelData.security !== "--"
+                                    }
+                                }
+
+                                Rectangle {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 60; height: 24
+                                    color: isConnecting
+                                        ? root.green
+                                        : (wfMA.containsMouse ? root.ink : "transparent")
+                                    border.color: isConnecting ? root.green : root.ink
+                                    border.width: 1
+                                    Behavior on color { ColorAnimation { duration: 100 } }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: isConnecting ? "..." : "Connect"
+                                        font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 1
+                                        color: isConnecting || wfMA.containsMouse ? root.paper : root.inkSoft
+                                    }
+                                }
+                            }
+
+                            MouseArea {
+                                id: wfMA
+                                anchors.fill: parent; hoverEnabled: true
+                                onClicked: {
+                                    if (!root.wifiConnecting) root.tryConnect(modelData.ssid || modelData.id)
+                                }
+                            }
+                        }
+
+                        // Empty state
+                        Text {
+                            visible: root.wifiNetworks.length === 0 && root.wifiPower
+                            anchors { top: parent.top; topMargin: 30; horizontalCenter: parent.horizontalCenter }
+                            text: "No networks found"
+                            font.family: root.ff; font.pixelSize: 12; color: root.inkSoft; opacity: 0.6
+                        }
+                    }
+                }
+
+                // ────── Bluetooth Tab ──────
+                Item {
+                    id: btTab
+                    anchors { fill: parent; margins: 12 }
+                    opacity: root.currentTab === "bt" ? 1 : 0
+                    visible: opacity > 0
+                    Behavior on opacity { NumberAnimation { duration: 120 } }
+
+                    Column {
+                        anchors { fill: parent }
+                        spacing: 0
+
+                        // RFKILL blocked warning
+                        Rectangle {
+                            visible: root.btBlocked
+                            width: parent.width; height: 24
+                            color: Qt.rgba(110/255,42/255,42/255,0.2)
+                            border.color: root.accent
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "BT blocked by rfkill.  Run: rfkill unblock bluetooth"
+                                font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 1; color: root.accent
+                            }
+                        }
+
+                        Rectangle { visible: root.btBlocked; width: parent.width; height: 4; color: "transparent" }
+
+                        // Power & Scan toggles
+                        Row {
+                            width: parent.width
+                            spacing: 8
+                            height: 34
+
+                            Rectangle {
+                                width: parent.width / 2 - 4; height: 32
+                                color: root.btPower ? root.green : Qt.rgba(70/255,63/255,46/255,0.08)
+                                border.color: root.lineSoft; border.width: 1
+                                Behavior on color { ColorAnimation { duration: 200 } }
+
+                                Row {
+                                    anchors.centerIn: parent; spacing: 6
+                                    Text {
+                                        text: "BT"; font.family: root.ff; font.pixelSize: 12; font.letterSpacing: 2; font.weight: Font.Bold
+                                        color: root.btPower ? root.paper : root.inkSoft
+                                    }
+                                    Text {
+                                        text: BluetoothAdapterState.toString(root.btAdp ? root.btAdp.state : BluetoothAdapterState.Disabled)
+                                        font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 1
+                                        color: root.btBlocked ? root.accent : (root.btPower ? root.paper : root.inkSoft)
+                                    }
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    enabled: root.btAdp && !root.btBlocked
+                                    onClicked: {
+                                        if (!root.btAdp) return
+                                        root.btAdp.enabled = !root.btAdp.enabled
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                width: parent.width / 2 - 4; height: 32
+                                color: root.btDiscovering ? root.accent : Qt.rgba(70/255,63/255,46/255,0.08)
+                                border.color: root.lineSoft; border.width: 1
+                                Behavior on color { ColorAnimation { duration: 200 } }
+
+                                Row {
+                                    anchors.centerIn: parent; spacing: 6
+                                    Text {
+                                        text: "Scan"; font.family: root.ff; font.pixelSize: 12; font.letterSpacing: 2; font.weight: Font.Bold
+                                        color: root.btDiscovering ? root.paper : root.inkSoft
+                                    }
+                                    Rectangle {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 6; height: 6; radius: 3
+                                        color: root.btDiscovering ? root.paper : "transparent"
+                                        SequentialAnimation on opacity {
+                                            running: root.btDiscovering; loops: Animation.Infinite
+                                            NumberAnimation { from: 1; to: 0.2; duration: 500 }
+                                            NumberAnimation { from: 0.2; to: 1; duration: 500 }
+                                        }
+                                    }
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    enabled: root.btAdp && root.btPower
+                                    onClicked: {
+                                        if (!root.btAdp || !root.btPower) return
+                                        root.btAdp.discovering = !root.btAdp.discovering
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle { width: parent.width; height: 6; color: "transparent" }
+
+                        // Connected devices header
+                        Text {
+                            text: "Connected"
+                            font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 2; color: root.inkSoft
+                            height: 20
+                            visible: btConnRepeater.count > 0 && btConnRepeater.itemAt(0) !== null
+                        }
+
+                            Repeater {
+                                id: btConnRepeater
+                                model: root.btAdp ? root.btAdp.devices : null
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    required property int index
+                                    visible: modelData && modelData.connected
+                                    width: parent.width; height: visible ? 36 : 0
+                                    color: Qt.rgba(90/255,122/255,90/255,0.12)
+                                    border.color: root.lineSoft; border.width: 1
+
+                                Row {
+                                    anchors { fill: parent; leftMargin: 6; rightMargin: 4 }
+                                    spacing: 6
+
+                                    Text {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: "▪"; font.family: root.ff; font.pixelSize: 12; color: root.green
+                                    }
+                                    Column {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: parent.width - 14 - 6 - 70
+                                        spacing: 1
+                                        Text {
+                                            text: modelData ? (modelData.name || modelData.address) : ""
+                                            font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 1; font.weight: Font.Medium
+                                            color: root.inkStrong; elide: Text.ElideRight
+                                            width: parent.width
+                                        }
+                                        Text {
+                                            text: modelData && modelData.batteryAvailable ? Math.round(modelData.battery * 100) + "%" : ""
+                                            font.family: root.ff; font.pixelSize: 10; color: root.inkSoft
+                                            visible: modelData && modelData.batteryAvailable
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 70; height: 24
+                                        color: dcMA.containsMouse ? root.accent : "transparent"
+                                        border.color: root.accent; border.width: 1
+                                        Behavior on color { ColorAnimation { duration: 100 } }
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "Disconnect"
+                                            font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 1
+                                            color: dcMA.containsMouse ? root.paper : root.accent
+                                        }
+                                        MouseArea {
+                                            id: dcMA
+                                            anchors.fill: parent; hoverEnabled: true
+                                            onClicked: { if (modelData) modelData.disconnect() }
+                                        }
+                                    }
+                                }
+                                }
+                            }
+
+                        // Available devices header
+                        Text {
+                            text: "Devices"
+                            font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 2; color: root.inkSoft
+                            height: 20
+                        }
+
+                        ListView {
+                            id: btDevList
+                            width: parent.width
+                            height: Math.max(0, parent.height - y)
+                            clip: true; spacing: 2
+                            model: root.btAdp ? root.btAdp.devices : null
+
+                            delegate: Rectangle {
+                                required property var modelData
+                                required property int index
+                                visible: modelData && !modelData.connected
+                                width: btDevList.width; height: visible ? 34 : 0
+                                color: btMA.containsMouse ? Qt.rgba(70/255,63/255,46/255,0.08) : "transparent"
+                                Behavior on color { ColorAnimation { duration: 100 } }
+
+                                Rectangle {
+                                    anchors.bottom: parent.bottom
+                                    x: 8; width: parent.width - 16; height: 1; color: root.lineVsoft
+                                }
+
+                                Row {
+                                    anchors { fill: parent; leftMargin: 8; rightMargin: 4 }
+                                    spacing: 6
+
+                                    Text {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: "▸"; font.family: root.ff; font.pixelSize: 10; color: root.inkSoft
+                                    }
+                                    Text {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: modelData ? (modelData.name || modelData.address) : ""
+                                        font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 1
+                                        color: root.inkStrong; elide: Text.ElideRight
+                                        width: parent.width - 10 - 6 - 70
+                                    }
+
+                                    Rectangle {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 70; height: 24
+                                        color: btMA.containsMouse ? root.ink : "transparent"
+                                        border.color: root.ink; border.width: 1
+                                        Behavior on color { ColorAnimation { duration: 100 } }
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: modelData ? (modelData.paired ? "Connect" : "Pair") : ""
+                                            font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 1
+                                            color: btMA.containsMouse ? root.paper : root.inkSoft
+                                        }
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: btMA
+                                    anchors.fill: parent; hoverEnabled: true
+                                    onClicked: {
+                                        if (!modelData) return
+                                        if (modelData.paired) modelData.connect()
+                                        else modelData.pair()
+                                    }
+                                }
+                            }
+
+                            Text {
+                                visible: btDevList.count === 0
+                                anchors { top: parent.top; topMargin: 20; horizontalCenter: parent.horizontalCenter }
+                                text: root.btBlocked
+                                    ? "Unblock rfkill first."
+                                    : (root.btPower ? (root.btDiscovering ? "Scanning..." : "Enable scan to find devices") : "BT is OFF")
+                                font.family: root.ff; font.pixelSize: 12; color: root.inkSoft; opacity: 0.6
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Footer
+            Item {
+                id: footer
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: 34
+                Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: root.lineSoft }
+
+                Row {
+                    anchors.centerIn: parent; spacing: 8
+                    Text { text: "◇"; font.family: root.ff; font.pixelSize: 10; color: root.inkSoft; anchors.verticalCenter: parent.verticalCenter }
+                    Text {
+                        text: root.currentTab === "wifi"
+                            ? "WiFi · NM reactive"
+                            : "BT · BlueZ reactive"
+                        font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 1.5; color: root.inkSoft; opacity: 0.5
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+            }
+        }
+
+        Timer { id: hideDone; interval: 180; onTriggered: { panelHost.visible = false; root.animRunning = false } }
+    }
+
+    function openPanel(tab) {
+        if (tab) root.currentTab = tab
+        if (panelOpen) return
+        panelOpen = true; animRunning = true
+        panelHost.visible = true
+        panelHost.x = root.screenW - root.panelW - 12
+    }
+
+    function closePanel() {
+        if (!panelOpen) return
+        panelOpen = false; animRunning = true
+        hideDone.restart()
+    }
+
+    function togglePanel(tab) {
+        if (panelOpen && (!tab || tab === root.currentTab)) closePanel()
+        else openPanel(tab)
+    }
+}

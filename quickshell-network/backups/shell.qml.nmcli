@@ -1,11 +1,9 @@
 import QtQuick
 import Quickshell
-import Quickshell.Bluetooth
 import Quickshell.Hyprland
 import Quickshell.Wayland
 import Quickshell.Io
 import Quickshell.Services.UPower
-import Quickshell.Networking
 
 pragma ComponentBehavior: Bound
 
@@ -30,6 +28,7 @@ ShellRoot {
         "ろく","しち","はち","きゅう","じゅう"
     ]
 
+    // Event-driven app detection: map wsId -> bool
     readonly property var wsHasApp: {
         var map = {}
         var vals = Hyprland.toplevels.values
@@ -57,8 +56,10 @@ ShellRoot {
         return at.workspace && at.workspace.id === cw.id && at.title !== ""
     }
 
+    // ── System stats ──
     property string cpuVal: "--%"
     property string memVal: "--%"
+    // ── Battery via UPower D-Bus (no process) ──
     readonly property var battery: UPower.displayDevice
     readonly property string batVal: root.battery && root.battery.ready
         ? Math.round(root.battery.percentage * 100) + "%" : "--"
@@ -70,35 +71,76 @@ ShellRoot {
         return ("0" + h).slice(-2) + ":" + ("0" + m).slice(-2)
     }
 
-    // ── WiFi (native Quickshell.Networking, 0 fork) ──
-    readonly property string wifiSsid: {
-        var devs = Networking.devices.values
-        for (var i = 0; i < devs.length; i++) {
-            if (devs[i].type !== DeviceType.Wifi) continue
-            var nets = devs[i].networks.values
-            for (var j = 0; j < nets.length; j++) {
-                if (nets[j].state === 2) return nets[j].name
+    // ── WiFi / BT status bar ──
+    property string wifiSsid: ""
+    property bool   btOn: false
+    property bool   btConn: false
+
+    Timer {
+        interval: 5000; running: true; repeat: true
+        onTriggered: {
+            wifiCheck.running = true
+            btCheck.running = true
+        }
+    }
+    Process {
+        id: wifiCheck
+        command: ["nmcli","-t","-f","STATE","general"]
+        environment: ({ LANG: "C", LC_ALL: "C" })
+        running: false
+        stdout: SplitParser {
+            onRead: data => {
+                if (data.trim() === "connected") wifiSsidProc.running = true
+                else root.wifiSsid = ""
             }
         }
-        return ""
     }
-
-    // ── BT (native Bluetooth, 0 fork) ──
-    readonly property bool btOn: Bluetooth.defaultAdapter
-        ? Bluetooth.defaultAdapter.enabled : false
-
-    readonly property bool btConn: {
-        var adp = Bluetooth.defaultAdapter
-        if (!adp || !adp.devices) return false
-        for (var i = 0; i < adp.devices.length; i++) {
-            if (adp.devices[i] && adp.devices[i].connected) return true
+    Process {
+        id: wifiSsidProc
+        command: ["nmcli","-t","-f","active,ssid","device","wifi"]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var lines = this.text.trim().split("\n")
+                for (var i = 0; i < lines.length; i++) {
+                    var line = lines[i].trim()
+                    var idx = line.indexOf(":")
+                    if (idx > 0 && line.substring(0, idx) === "yes") {
+                        root.wifiSsid = line.substring(idx + 1)
+                        return
+                    }
+                }
+                root.wifiSsid = ""
+            }
         }
-        return false
+    }
+    Process {
+        id: btCheck
+        command: ["bluetoothctl","show"]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.btOn = this.text.indexOf("Powered: yes") >= 0
+                if (root.btOn) btConnCheck.running = true
+                else root.btConn = false
+            }
+        }
+    }
+    Process {
+        id: btConnCheck
+        command: ["bluetoothctl","devices","Connected"]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.btConn = this.text.trim() !== ""
+            }
+        }
     }
 
     property int lastCpuUsed:  0
     property int lastCpuTotal: 0
 
+    // ── CPU + Memory: FileView (no fork/exec) ──
     Timer {
         interval: 3000; running: true; repeat: true
         onTriggered: { fileStat.reload(); fileMem.reload() }
@@ -133,11 +175,13 @@ ShellRoot {
         }
     }
 
+    // ── Clock ──
     SystemClock {
         id: sysClock
         precision: SystemClock.Minutes
     }
 
+    // ── Bar window ──
     Variants {
         model: Quickshell.screens
         PanelWindow {
@@ -158,6 +202,7 @@ ShellRoot {
                 border.color: root.ink
                 border.width: 1
 
+                // Grid overlay (12px cell, 2D — launcher style)
                 Repeater {
                     model: Math.floor(barBg.width / root.gridSize) + 1
                     Rectangle {
@@ -181,6 +226,7 @@ ShellRoot {
                     }
                 }
 
+                // Workspaces row
                 Row {
                     id: wsRow
                     anchors {
@@ -206,6 +252,7 @@ ShellRoot {
                             height: wsRow.height - 2
                             color: isActive ? root.ink : root.inactiveBg
 
+                            // Bottom border: thick if workspace has apps
                             Rectangle {
                                 anchors.bottom: parent.bottom
                                 anchors.left: parent.left
@@ -247,12 +294,14 @@ ShellRoot {
                     }
                 }
 
+                // ── Focused window title (center) ──
                 Item {
                     id: titleFrame
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.verticalCenter: parent.verticalCenter
                     height: 26
                     clip: true
+                    // Centered frame must fit between left+right occupied space
                     property real leftSide: wsRow.x + wsRow.width + 12
                     property real rightSide: barBg.width - statsRow.x
                     property real tightSide: Math.max(leftSide, rightSide)
@@ -291,6 +340,7 @@ ShellRoot {
                     }
                 }
 
+                // ── System stats (right side) ──
                 Row {
                     id: statsRow
                     anchors.right: parent.right
@@ -314,10 +364,12 @@ ShellRoot {
                     Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: wfRow.width; height: wfRow.height
+
                         Row {
                             id: wfRow
                             spacing: 6
                             anchors.verticalCenter: parent.verticalCenter
+
                             Text {
                                 font.family: "Ndot 57"
                                 font.pixelSize: 14
@@ -353,10 +405,12 @@ ShellRoot {
                     Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: btRow.width; height: btRow.height
+
                         Row {
                             id: btRow
                             spacing: 6
                             anchors.verticalCenter: parent.verticalCenter
+
                             Text {
                                 font.family: "Ndot 57"
                                 font.pixelSize: 14

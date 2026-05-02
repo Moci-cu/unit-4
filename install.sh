@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════
-#   Unit-3 installer — Hyprland + Quickshell + Waybar rice
+#   Unit-3 installer — Hyprland + Quickshell rice
 #   Usage: bash <(curl -fsSL https://raw.githubusercontent.com/samyns/Unit-3/main/install.sh)
 # ═══════════════════════════════════════════════════════════════════
 set -euo pipefail
@@ -34,7 +34,7 @@ EOF
 done
 
 # Folders managed by this installer (touched in $CONFIG_HOME)
-readonly MANAGED_DIRS=(hypr quickshell waybar kitty dunst)
+readonly MANAGED_DIRS=(hypr quickshell kitty)
 
 # ─── Colors & logging ───────────────────────────────────────────────
 if [[ -t 1 ]]; then
@@ -210,7 +210,7 @@ deploy_configs() {
 
     # Make all .sh / .py executable
     log "Setting executable bits on scripts…"
-    find "$CONFIG_HOME/hypr" "$CONFIG_HOME/quickshell" "$CONFIG_HOME/waybar" \
+    find "$CONFIG_HOME/hypr" "$CONFIG_HOME/quickshell" \
         -type f \( -name '*.sh' -o -name '*.py' \) -exec chmod +x {} + 2>/dev/null || true
 
     # Create the user override file (NEVER overwritten on update)
