@@ -337,10 +337,11 @@ Item {
              color:  root.paper
              border.color: root.ink; border.width: 1
 
-            // Glitch — NieR palette
+            // GLSL glitch — GPU driven via Behavior on time
+            // Glitch — NieR palette (Timer-based, chroma overlays)
             Rectangle { id: chromaR; anchors.fill: parent; color: root.accent; opacity: 0; z: 100 }
             Rectangle { id: chromaC; x: 4; y: 2; width: parent.width; height: parent.height; color: root.ink; opacity: 0; z: 100 }
-            Rectangle { id: chromaB; y: 0; width: parent.width; height: 4; color: "#ffffff"; opacity: 0; z: 101 }
+            Rectangle { id: chromaB; y: 0; width: parent.width; height: 4; color: root.paper; opacity: 0; z: 101 }
 
             Timer {
                 id: glitchTimer
@@ -351,7 +352,7 @@ Item {
                     step++
                     if (step === 1) { chromaR.opacity = 0.35; chromaC.opacity = 0.25; panelHost.x = ox + 8
                     } else if (step === 2) { panelHost.x = ox - 10; chromaR.opacity = 0.15; chromaC.opacity = 0.35
-                    } else if (step === 3) { panelHost.x = ox + 4; chromaR.opacity = 0; chromaC.opacity = 0; chromaB.opacity = 0.6; chromaB.y = parent.height * 0.3
+                    } else if (step === 3) { panelHost.x = ox + 4; chromaR.opacity = 0; chromaC.opacity = 0; chromaB.opacity = 0.6; chromaB.y = root.lh * 0.3
                     } else if (step === 4) { chromaB.opacity = 0; chromaR.opacity = 0.4; chromaC.opacity = 0
                     } else if (step === 5) { chromaR.opacity = 0; panelHost.x = ox
                     } else { panelHost.x = ox; chromaR.opacity = 0; chromaC.opacity = 0; chromaB.opacity = 0; step = 0; glitchTimer.stop() }
