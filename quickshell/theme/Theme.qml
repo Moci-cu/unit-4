@@ -1,33 +1,47 @@
 pragma Singleton
 import QtQuick
+import Quickshell
 
 QtObject {
-  // ── Dark / Sepia palette (overlay widgets) ──
-  readonly property color bg:     "#0b0a09"
-  readonly property color bg2:    "#111008"
-  readonly property color bg3:    "#1a1814"
-  readonly property color fg:     "#c8b89a"
-  readonly property color fgd:    Qt.rgba(200/255, 184/255, 154/255, 0.5)
-  readonly property color fgdd:   Qt.rgba(200/255, 184/255, 154/255, 0.2)
+  // ── Dark mode state ──
+  readonly property bool darkMode: darkState === "1"
+  property string darkState: "0"
 
-  // ── Paper / Launcher palette (light panels) ──
-  readonly property color paper:     "#d6cfb5"
-  readonly property color ink:       "#463f2e"
-  readonly property color inkStrong: "#2e2a1f"
-  readonly property color inkSoft:   "#7a7358"
-  readonly property color lineSoft:  Qt.rgba(70/255, 63/255, 46/255, 0.25)
-  readonly property color lineVsoft: Qt.rgba(70/255, 63/255, 46/255, 0.12)
+  // ── Dark overlay widgets ──
+  readonly property color bg:     "#0a0a0a"
+  readonly property color bg2:    "#0f0f0f"
+  readonly property color bg3:    "#141414"
+  readonly property color fg:     "#ffffff"
+  readonly property color fgd:    Qt.rgba(255/255, 255/255, 255/255, 0.5)
+  readonly property color fgdd:   Qt.rgba(255/255, 255/255, 255/255, 0.2)
+
+  // ── Comic palette (Miles Morales / Spider-Verse) ──
+  readonly property color paper:     "#0d0d0d"
+  readonly property color ink:       "#ffffff"
+  readonly property color inkStrong: "#ffffff"
+  readonly property color inkSoft:   "#8a8a8a"
+  readonly property color lineSoft:  Qt.rgba(204/255,26/255,26/255,0.30)
+  readonly property color lineVsoft: Qt.rgba(204/255,26/255,26/255,0.10)
 
   // ── Accents ──
-  readonly property color a1:     "#c87060"
-  readonly property color a2:     "#60a880"
-  readonly property color a3:     "#6090c8"
-  readonly property color a4:     "#c8a860"
-  readonly property color accent: "#6e2a2a"
+  readonly property color a1:     "#cc1a1a"
+  readonly property color a2:     "#00aaff"
+  readonly property color a3:     "#ffd700"
+  readonly property color a4:     "#ffffff"
+  readonly property color accent: "#cc1a1a"
 
   // ── Bordures ──
-  readonly property color ln:     Qt.rgba(200/255, 184/255, 154/255, 0.12)
-  readonly property color lnm:    Qt.rgba(200/255, 184/255, 154/255, 0.22)
+  readonly property color ln:     Qt.rgba(255/255, 255/255, 255/255, 0.10)
+  readonly property color lnm:    Qt.rgba(255/255, 255/255, 255/255, 0.20)
+
+  // ── UI elements ──
+  readonly property color gold:       "#00aaff"
+  readonly property color inactiveBg: Qt.rgba(255/255,255/255,255/255,0.06)
+
+  // ── OSD bars (Volume / Brightness) ──
+  readonly property color osdFilled: "#cc1a1a"
+  readonly property color osdEmpty:  "#ffffff"
+  readonly property color osdBg:     "#0a0a0a"
 
   // ── Font ──
   readonly property string mono:  "Share Tech Mono"

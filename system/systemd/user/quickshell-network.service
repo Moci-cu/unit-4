@@ -3,7 +3,7 @@ Description=Quickshell Network Panel (WiFi + BT)
 After=graphical-session.target
 
 [Service]
-ExecStartPre=/usr/bin/sh -c 'touch "$XDG_RUNTIME_DIR/qs-netpanel-cmd"'
+ExecStartPre=/usr/bin/sh -c 'echo -n > "$XDG_RUNTIME_DIR/qs-netpanel-cmd"'
 ExecStart=/usr/bin/qs -p %h/.config/quickshell-network/shell.qml
 Restart=always
 RestartSec=3

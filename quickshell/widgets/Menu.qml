@@ -37,6 +37,42 @@ Item {
     property bool nightMode: false
     property int  nightTemp: 4000
 
+    // ── TLP current profile ──
+    property string tlpProfile: ""
+
+    // ── Coffee mode (keep screen awake) ──
+    property bool coffeeMode: false
+    property string coffeeStateFile: Quickshell.env("HOME") + "/.config/quickshell/coffee-mode.state"
+
+    Process {
+        id: coffeeRead
+        command: ["cat", root.coffeeStateFile]
+        running: false
+        stdout: SplitParser {
+            onRead: data => { if (data.trim() === "1") root.coffeeMode = true }
+        }
+    }
+    Process {
+        id: coffeeWrite
+        property string state: "0"
+        command: ["sh", "-c", "echo " + state + " > " + root.coffeeStateFile]
+        running: false
+    }
+
+    function toggleCoffeeMode() {
+        root.coffeeMode = !root.coffeeMode
+        coffeeWrite.state = root.coffeeMode ? "1" : "0"
+        coffeeWrite.running = true
+    }
+    Process {
+        id: tlpGetProc
+        command: ["tlpctl", "get"]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: { root.tlpProfile = this.text.trim() || "" }
+        }
+    }
+
     // ── Special system actions (not real apps) ──
     readonly property var specialItems: [
         { id: "S01", name: "Lock Screen",      cmd: "__lock__",      desktopId: "__lock__",      meta: "quickshell", keywords: "lock screen lockscreen",            icon: "⬡", cat: "sys" },
@@ -44,7 +80,10 @@ Item {
         { id: "S03", name: "Sleep",            cmd: "__sleep__",     desktopId: "__sleep__",     meta: "systemctl",  keywords: "sleep suspend standby",             icon: "◈", cat: "sys" },
         { id: "S04", name: "Reboot",           cmd: "__reboot__",    desktopId: "__reboot__",    meta: "systemctl",  keywords: "reboot restart",                    icon: "↻", cat: "sys" },
         { id: "S05", name: "Shut Down",        cmd: "__shutdown__",  desktopId: "__shutdown__",  meta: "systemctl",  keywords: "shutdown poweroff halt power off",  icon: "⏻", cat: "sys" },
-        { id: "S06", name: "Kill All Apps", cmd: "__killactive__",desktopId: "__killactive__", meta: "hyprland",   keywords: "kill close terminate workspace apps",icon: "✕", cat: "sys" }
+        { id: "S06", name: "Kill All Apps", cmd: "__killactive__",desktopId: "__killactive__", meta: "hyprland",   keywords: "kill close terminate workspace apps",icon: "✕", cat: "sys" },
+        { id: "S07", name: "Power: Performance", cmd: "tlpctl performance", desktopId: "tlpctl performance", meta: "tlpctl", keywords: "power performance profile tlpctl", icon: "⬡", cat: "sys" },
+        { id: "S08", name: "Power: Balanced",    cmd: "tlpctl balanced",    desktopId: "tlpctl balanced",    meta: "tlpctl", keywords: "power balanced profile tlpctl",    icon: "⬡", cat: "sys" },
+        { id: "S09", name: "Power: Power-saver", cmd: "tlpctl power-saver", desktopId: "tlpctl power-saver", meta: "tlpctl", keywords: "power saver profile tlpctl",   icon: "⬡", cat: "sys" }
     ]
 
     readonly property var catLabels: ({
@@ -240,6 +279,14 @@ Item {
         nightStateWrite.running = true
     }
 
+    function toggleDarkMode() {
+        var f = Quickshell.env("HOME") + "/.config/quickshell/dark-mode.state"
+        Quickshell.execDetached(["sh", "-c",
+            'val=$(cat ' + f + ' 2>/dev/null); [ "$val" = "1" ] && echo 0 > ' + f + ' || echo 1 > ' + f +
+            '; systemctl --user restart quickshell-bar quickshell-network quickshell'])
+        root.closeMenu()
+    }
+
     Timer {
         interval: 1000; running: root.menuOpen; repeat: true
         onTriggered: {
@@ -267,18 +314,7 @@ Item {
             + String(d.getSeconds()).padStart(2,"0")
         desktopReader.running = true
         nightStateRead.running = true
-    }
-
-    Rectangle {
-        anchors.fill: parent
-        color: root.menuOpen ? Qt.rgba(184/255,175/255,147/255,0.55) : "transparent"
-        visible: true
-        Behavior on color { ColorAnimation { duration: 260 } }
-        MouseArea {
-            anchors.fill: parent
-            enabled: root.menuOpen
-            onClicked: root.closeMenu()
-        }
+        coffeeRead.running = true
     }
 
     Item {
@@ -470,6 +506,18 @@ Item {
 
                                         onTextEdited: { root.searchQuery=text; root.focusIdx=0 }
 
+                                        Keys.onPressed: function(event) {
+                                            if (event.modifiers & Qt.ControlModifier) {
+                                                if (event.key === Qt.Key_J) {
+                                                    root.focusIdx=Math.min(root.filteredApps.length-1,root.focusIdx+1)
+                                                    appList.positionViewAtIndex(root.focusIdx, ListView.Contain)
+                                                } else if (event.key === Qt.Key_K) {
+                                                    root.focusIdx=Math.max(0,root.focusIdx-1)
+                                                    appList.positionViewAtIndex(root.focusIdx, ListView.Contain)
+                                                }
+                                            }
+                                        }
+
                                         Keys.onEscapePressed: root.closeMenu()
                                         Keys.onUpPressed: {
                                             root.focusIdx=Math.max(0,root.focusIdx-1)
@@ -607,8 +655,8 @@ text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
                         Repeater {
                             model:[
                                 {l:"NIGHT",    cmd:"__night__"},
-                                {l:"TERMINAL", cmd:"kitty"},
-                                {l:"FILES",    cmd:"kitty -e yazi"},
+                                {l:"DARK",     cmd:"__dark__"},
+                                {l:"COFFEE",   cmd:"__coffee__"},
                                 {l:"LOCK",     cmd:Quickshell.env("HOME")+"/.config/quickshell/lock.sh"},
                                 {l:"SLEEP",    cmd:"systemctl suspend"},
                                 {l:"REBOOT",   cmd:"systemctl reboot"},
@@ -625,9 +673,10 @@ text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
                                 }
                                 Text {
                                     id:faLbl; anchors.centerIn:parent
-                                    text:modelData.l; font.family:root.ff; font.pixelSize:13; font.letterSpacing:2.5
+                                    text:modelData.l; font.family:root.ff; font.pixelSize:13; font.letterSpacing:2.5; font.weight:Font.Bold
                                     color: {
                                         if (modelData.cmd === "__night__" && root.nightMode) return root.accent
+                                        if (modelData.cmd === "__coffee__" && root.coffeeMode) return root.accent
                                         return faMA.containsMouse ? (modelData.danger===true ? root.accent : root.inkStrong) : root.inkSoft
                                     }
                                     Behavior on color { ColorAnimation { duration:150 } }
@@ -636,6 +685,7 @@ text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
                                     anchors{bottom:parent.bottom;horizontalCenter:parent.horizontalCenter;bottomMargin:6}
                                     width: {
                                         if (modelData.cmd === "__night__" && root.nightMode) return faLbl.implicitWidth
+                                        if (modelData.cmd === "__coffee__" && root.coffeeMode) return faLbl.implicitWidth
                                         return faMA.containsMouse?faLbl.implicitWidth:0
                                     }
                                     height:1; color:root.accent
@@ -643,10 +693,18 @@ text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
                                 }
                                 MouseArea { id:faMA; anchors.fill:parent; hoverEnabled:true; onClicked: {
                                     if (modelData.cmd === "__night__") root.toggleNightMode()
+                                    else if (modelData.cmd === "__dark__") root.toggleDarkMode()
+                                    else if (modelData.cmd === "__coffee__") root.toggleCoffeeMode()
                                     else root.launch(modelData.cmd)
                                 } }
                             }
                         }
+                    }
+                    Text {
+                        visible: root.tlpProfile !== ""
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "TLP: " + root.tlpProfile.toUpperCase()
+                        font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 2.5; font.weight: Font.Black; color: root.inkSoft; opacity: 0.85
                     }
                     Item { width:parent.width-380; height:1 }
                     Row {
@@ -680,6 +738,7 @@ text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
         panelHost.visible = true; panelHost.x = (root.screenW - root.lw) / 2
         panelHost.opacity = 1; panelHost.scale = 1
         scanAnim.start(); focusTimer.attempts = 0; focusTimer.restart()
+        tlpGetProc.running = true
     }
 
     function closeMenu() {

@@ -12,14 +12,19 @@ pragma ComponentBehavior: Bound
 ShellRoot {
     id: root
 
-    readonly property color paper:     "#d6cfb5"
-    readonly property color ink:       "#463f2e"
-    readonly property color inkStrong: "#2e2a1f"
-    readonly property color inkSoft:   "#7a7358"
-    readonly property color lineVsoft: Qt.rgba(70/255,63/255,46/255,0.12)
-    readonly property color lineSoft:  Qt.rgba(70/255,63/255,46/255,0.25)
-    readonly property color accent:    "#6e2a2a"
-    readonly property color inactiveBg: Qt.rgba(70/255,63/255,46/255,0.22)
+    property string dmState: "0"
+    readonly property bool darkMode: dmState === "1"
+    FileView { id: dmFile; path: Quickshell.env("HOME") + "/.config/quickshell/dark-mode.state"; onLoaded: { root.dmState = text().trim() } }
+    Timer { interval: 200; running: true; repeat: false; onTriggered: dmFile.reload() }
+
+    readonly property color paper:     root.darkMode ? "#0d0d0d" : "#d6cfb5"
+    readonly property color ink:       root.darkMode ? "#ffffff" : "#463f2e"
+    readonly property color inkStrong: root.darkMode ? "#ffffff" : "#2e2a1f"
+    readonly property color inkSoft:   root.darkMode ? "#8a8a8a" : "#7a7358"
+    readonly property color lineVsoft: root.darkMode ? Qt.rgba(204/255,26/255,26/255,0.10) : Qt.rgba(70/255,63/255,46/255,0.12)
+    readonly property color lineSoft:  root.darkMode ? Qt.rgba(204/255,26/255,26/255,0.30) : Qt.rgba(70/255,63/255,46/255,0.25)
+    readonly property color accent:    root.darkMode ? "#cc1a1a" : "#6e2a2a"
+    readonly property color inactiveBg: root.darkMode ? Qt.rgba(255/255,255/255,255/255,0.06) : Qt.rgba(70/255,63/255,46/255,0.22)
     readonly property color chargingBg: "#5a7a5a"
 
     readonly property int barHeight: 40
@@ -39,6 +44,21 @@ ShellRoot {
         }
         return map
     }
+
+    readonly property var wsTopClass: {
+        var map = {}
+        var vals = Hyprland.toplevels.values
+        for (var i = 0; i < vals.length; i++) {
+            var t = vals[i]
+            if (t && t.workspace) {
+                var cls = t.lastIpcObject?.initialClass || t.lastIpcObject?.class
+                var c = ((cls || "")[0] || "?")[0].toUpperCase()
+                if (!map[t.workspace.id]) map[t.workspace.id] = c
+            }
+        }
+        return map
+    }
+
 
     readonly property string activeTitle: {
         var at = Hyprland.activeToplevel
@@ -191,95 +211,115 @@ ShellRoot {
                 anchors.fill: parent
                 color: root.paper
                 border.color: root.ink
-                border.width: 1
+                border.width: 2
 
                 Repeater {
-                    model: Math.floor(barBg.width / root.gridSize) + 1
+                    model: Math.floor(barBg.width / 24) + 1
                     Rectangle {
                         required property int index
-                        x: index * root.gridSize
+                        x: index * 24
                         y: 0
-                        width: 1
-                        height: barBg.height
+                        width: 3; height: 3; radius: 1.5
                         color: root.lineVsoft
                     }
                 }
                 Repeater {
-                    model: Math.floor(barBg.height / root.gridSize) + 1
+                    model: Math.floor(barBg.height / 24) + 1
                     Rectangle {
                         required property int index
                         x: 0
-                        y: index * root.gridSize
-                        width: barBg.width
-                        height: 1
+                        y: index * 24
+                        width: 3; height: 3; radius: 1.5
                         color: root.lineVsoft
                     }
                 }
 
                 Row {
                     id: wsRow
-                    anchors {
-                        left: parent.left
-                        top: parent.top
-                        bottom: parent.bottom
-                        leftMargin: 10
-                        topMargin: 4
-                        bottomMargin: 4
-                    }
-                    spacing: 8
+                    anchors { top: parent.top; bottom: parent.bottom; topMargin: 4; bottomMargin: 4 }
+                    x: Math.max(leftInfo.x + leftInfo.width + 6, (barBg.width - wsRow.width) / 2)
+                    spacing: 0
 
-                    Repeater {
-                        model: 10
-                        Rectangle {
-                            required property int index
-                            readonly property int wsId: index + 1
-                            readonly property bool isActive: Hyprland.focusedWorkspace
-                                ? Hyprland.focusedWorkspace.id === wsId
-                                : false
+                    Rectangle {
+                        height: wsRow.height
+                        width: 10 * 23 + 9 * 5 + 11
+                        color: root.darkMode ? Qt.rgba(200/255,168/255,96/255,0.05) : root.inactiveBg
+                        border.color: root.inkStrong; border.width: 1
 
-                            width: wsContent.implicitWidth + 16
-                            height: wsRow.height - 2
-                            color: isActive ? root.ink : root.inactiveBg
+                        Row {
+                            anchors { fill: parent; leftMargin: 5; rightMargin: 5 }
+                            spacing: 5
+                            Repeater {
+                                model: 10
+                                Rectangle {
+                                    required property int index
+                                    readonly property int wsId: index + 1
+                                    readonly property bool isActive: Hyprland.focusedWorkspace
+                                        ? Hyprland.focusedWorkspace.id === wsId
+                                        : false
 
-                            Rectangle {
-                                anchors.bottom: parent.bottom
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                height: root.wsHasApp[wsId] === true ? 3 : 0
-                                color: root.ink
-                                visible: height > 0
-                            }
-
-                            Row {
-                                id: wsContent
-                                anchors.centerIn: parent
-                                spacing: 6
-
-                                Text {
+                                    width: 23; height: 20
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: "■"
-                                    font.family: "Ndot 57"
-                                    font.pixelSize: 14
-                                    color: parent.parent.isActive ? root.paper : root.ink
-                                }
+                                    color: isActive ? root.ink : "transparent"
+                                    border.color: root.inkSoft; border.width: 1
 
-                                Text {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: root.wsLabels[index]
-                                    font.family: "Ndot77JPExtended"
-                                    font.pixelSize: 18
-                                    font.letterSpacing: 1.5
-                                    font.weight: Font.Bold
-                                    color: parent.parent.isActive ? root.paper : root.inkSoft
-                                }
-                            }
+                                    Text {
+                                        anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter; verticalCenterOffset: -2 }
+                                        text: parent.isActive ? "◆" : (root.wsHasApp[wsId] ? root.wsTopClass[wsId] : "◈")
+                                        font.family: "Ndot 57"; font.pixelSize: 13
+                                        color: parent.isActive ? root.paper : root.ink
+                                    }
 
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: Hyprland.dispatch("workspace " + wsId)
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: Hyprland.dispatch("workspace " + wsId)
+                                    }
+
+                                }
                             }
                         }
                     }
+                }
+
+                Row {
+                    id: leftInfo
+                    anchors { left: parent.left; top: parent.top; bottom: parent.bottom; leftMargin: 10; topMargin: 4; bottomMargin: 4 }
+                    spacing: 6
+
+                    Text {
+                        font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; opacity:0.85
+                        color: root.showTitleFrame ? root.inkStrong : root.inkSoft
+                        text: root.activeTitle; elide: Text.ElideRight
+                        width: Math.min(implicitWidth, 200)
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Item { width:1; height:1 }
+
+                    Item {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: btRow2.width; height: btRow2.height
+                        Row { id: btRow2; spacing: 6; anchors.verticalCenter: parent.verticalCenter
+                            Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; color:root.inkStrong; opacity:0.85; text:"BT"; anchors.verticalCenter:parent.verticalCenter }
+                            Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; opacity:0.8; text:root.btOn?(root.btConn?"ON":"--"):"OFF"; anchors.verticalCenter:parent.verticalCenter; color:root.btOn?(root.btConn?"#00aaff":root.inkSoft):root.inkSoft }
+                        }
+                        MouseArea { anchors.fill:parent; anchors.margins:-4; onClicked:Quickshell.execDetached(["sh","-c","echo 'open:bt:'$(date +%s%N) > $XDG_RUNTIME_DIR/qs-netpanel-cmd"]) }
+                    }
+
+                    Item { width:1; height:1 }
+
+                    Item {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: wfRow2.width; height: wfRow2.height
+                        Row { id: wfRow2; spacing: 6; anchors.verticalCenter: parent.verticalCenter
+                            Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; color:root.inkStrong; opacity:0.85; text:"WF"; anchors.verticalCenter:parent.verticalCenter }
+                            Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; opacity:0.8; text:root.wifiSsid||"---"; elide:Text.ElideRight; anchors.verticalCenter:parent.verticalCenter; color:root.wifiSsid?"#00aaff":root.inkSoft }
+                        }
+                        MouseArea { anchors.fill:parent; anchors.margins:-4; onClicked:Quickshell.execDetached(["sh","-c","echo 'open:wifi:'$(date +%s%N) > $XDG_RUNTIME_DIR/qs-netpanel-cmd"]) }
+                    }
+
+                    Item { width:1; height:1 }
+
+                    Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; color:root.inkStrong; opacity:0.85; text:root.currentTime; anchors.verticalCenter:parent.verticalCenter }
                 }
 
                 Item {
@@ -288,41 +328,14 @@ ShellRoot {
                     anchors.verticalCenter: parent.verticalCenter
                     height: 26
                     clip: true
-                    property real leftSide: wsRow.x + wsRow.width + 12
+                    property real leftSide: leftInfo.x + leftInfo.width + 12
                     property real rightSide: barBg.width - statsRow.x
                     property real tightSide: Math.max(leftSide, rightSide)
                     property real maxW: Math.max(barBg.width - 2 * tightSide, 0)
-                    width: Math.min(titleText.implicitWidth + 16, maxW)
+                    width: Math.min(wsRow.width, maxW)
 
                     Behavior on width {
                         animation: NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
-                    }
-
-                    Rectangle {
-                        anchors.fill: parent
-                        color: "transparent"
-                        border.color: root.ink
-                        border.width: 2
-                        opacity: 0.35
-                        visible: root.showTitleFrame
-
-                        Rectangle { x: -1; y: -1; width: 2; height: 2; color: root.ink }
-                        Rectangle { x: parent.width - 1; y: -1; width: 2; height: 2; color: root.ink }
-                        Rectangle { x: -1; y: parent.height - 1; width: 2; height: 2; color: root.ink }
-                        Rectangle { x: parent.width - 1; y: parent.height - 1; width: 2; height: 2; color: root.ink }
-                    }
-
-                    Text {
-                        id: titleText
-                        anchors.centerIn: parent
-                        width: parent.width - 12
-                        text: root.activeTitle
-                        elide: Text.ElideRight
-                        font.family: "Ndot 57"
-                        font.pixelSize: 16
-                        opacity: 0.85
-                        color: root.ink
-                        horizontalAlignment: Text.AlignHCenter
                     }
                 }
 
@@ -332,95 +345,6 @@ ShellRoot {
                     anchors.rightMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 9
-
-                    Text {
-                        font.family: "Ndot 57"
-                        font.pixelSize: 14
-                        font.weight: Font.Bold
-                        font.letterSpacing: 1.2
-                        color: root.inkStrong
-                        opacity: 0.85
-                        text: root.currentTime
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-
-                    Item { width: 2; height: 1 }
-
-                    Item {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: wfRow.width; height: wfRow.height
-                        Row {
-                            id: wfRow
-                            spacing: 6
-                            anchors.verticalCenter: parent.verticalCenter
-                            Text {
-                                font.family: "Ndot 57"
-                                font.pixelSize: 14
-                                font.weight: Font.Bold
-                                font.letterSpacing: 1.2
-                                color: root.inkStrong
-                                opacity: 0.85
-                                text: "WF"
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                            Text {
-                                id: wifiVal
-                                font.family: "Ndot 57"
-                                font.pixelSize: 14
-                                font.weight: Font.Bold
-                                font.letterSpacing: 1.2
-                                opacity: 0.8
-                                color: root.wifiSsid ? "#8a6a30" : root.inkSoft
-                                text: root.wifiSsid || "---"
-                                elide: Text.ElideRight
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                        }
-                        MouseArea {
-                            anchors.fill: parent
-                            anchors.margins: -4
-                            onClicked: Quickshell.execDetached(["sh","-c","echo 'open:wifi:'$(date +%s%N) > $XDG_RUNTIME_DIR/qs-netpanel-cmd"])
-                        }
-                    }
-
-                    Item { width: 2; height: 1 }
-
-                    Item {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: btRow.width; height: btRow.height
-                        Row {
-                            id: btRow
-                            spacing: 6
-                            anchors.verticalCenter: parent.verticalCenter
-                            Text {
-                                font.family: "Ndot 57"
-                                font.pixelSize: 14
-                                font.weight: Font.Bold
-                                font.letterSpacing: 1.2
-                                color: root.inkStrong
-                                opacity: 0.85
-                                text: "BT"
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                            Text {
-                                font.family: "Ndot 57"
-                                font.pixelSize: 14
-                                font.weight: Font.Bold
-                                font.letterSpacing: 1.2
-                                opacity: 0.8
-                                color: root.btOn ? (root.btConn ? "#8a6a30" : root.inkSoft) : root.inkSoft
-                                text: root.btOn ? (root.btConn ? "ON" : "--") : "OFF"
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                        }
-                        MouseArea {
-                            anchors.fill: parent
-                            anchors.margins: -4
-                            onClicked: Quickshell.execDetached(["sh","-c","echo 'open:bt:'$(date +%s%N) > $XDG_RUNTIME_DIR/qs-netpanel-cmd"])
-                        }
-                    }
-
-                    Item { width: 2; height: 1 }
 
                     Text {
                         font.family: "Ndot 57"

@@ -17,14 +17,19 @@ Item {
     readonly property int panelH: 280
     readonly property int gridSize: 12
 
-    readonly property color paper:     "#d6cfb5"
-    readonly property color ink:       "#463f2e"
-    readonly property color inkStrong: "#2e2a1f"
-    readonly property color inkSoft:   "#7a7358"
-    readonly property color lineVsoft: Qt.rgba(70/255,63/255,46/255,0.12)
-    readonly property color lineSoft:  Qt.rgba(70/255,63/255,46/255,0.25)
-    readonly property color accent:    "#6e2a2a"
-    readonly property color gold:      "#8a6a30"
+    // ── Dark mode ──
+    readonly property bool darkMode: dm.text().trim() === "1"
+    FileView { id: dm; path: Quickshell.env("HOME") + "/.config/quickshell/dark-mode.state"; onLoaded: {  } }
+    Timer { interval: 200; running: true; repeat: false; onTriggered: dm.reload() }
+
+    readonly property color paper:     root.darkMode ? "#0d0d0d" : "#d6cfb5"
+    readonly property color ink:       root.darkMode ? "#ffffff" : "#463f2e"
+    readonly property color inkStrong: root.darkMode ? "#ffffff" : "#2e2a1f"
+    readonly property color inkSoft:   root.darkMode ? "#8a8a8a" : "#7a7358"
+    readonly property color lineVsoft: root.darkMode ? Qt.rgba(204/255,26/255,26/255,0.10) : Qt.rgba(70/255,63/255,46/255,0.10)
+    readonly property color lineSoft:  root.darkMode ? Qt.rgba(204/255,26/255,26/255,0.30) : Qt.rgba(70/255,63/255,46/255,0.23)
+    readonly property color accent:    root.darkMode ? "#cc1a1a" : "#6e2a2a"
+    readonly property color gold:      "#00aaff"
 
     FontLoader { id: mainFont; source: "file://" + Quickshell.env("HOME") + "/.local/share/fonts/Ndot57-Regular.otf" }
     readonly property string ff: mainFont.name
@@ -95,12 +100,12 @@ Item {
             Rectangle { x: parent.width - 1; y: parent.height - 1; width: 2; height: 2; color: root.ink }
 
             Repeater {
-                model: Math.floor(parent.width / root.gridSize) + 1
-                Rectangle { required property int index; x: index * root.gridSize; y: 0; width: 1; height: parent.height; color: root.lineVsoft }
+                model: Math.floor(parent.width / 24) + 1
+                Rectangle { required property int index; x: index * 24; y: 2; width: 3; height: 3; radius: 1.5; color: root.lineVsoft }
             }
             Repeater {
-                model: Math.floor(parent.height / root.gridSize) + 1
-                Rectangle { required property int index; x: 0; y: index * root.gridSize; width: parent.width; height: 1; color: root.lineVsoft }
+                model: Math.floor(parent.height / 24) + 1
+                Rectangle { required property int index; x: 2; y: index * 24; width: 3; height: 3; radius: 1.5; color: root.lineVsoft }
             }
 
             // Header

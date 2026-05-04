@@ -7,9 +7,18 @@ import QtQuick
 import "widgets"
 import "components"
 import "settings"
+import "theme"
 
 ShellRoot {
     id: root
+
+    // ── Dark mode state reader ──
+    FileView {
+        id: dmFile
+        path: Quickshell.env("HOME") + "/.config/quickshell/dark-mode.state"
+        onLoaded: { Theme.darkState = text().trim() }
+    }
+    Timer { interval: 100; running: true; repeat: false; onTriggered: dmFile.reload() }
 
     // ── NOTIFICATIONS ──
     Notifications {}
@@ -108,6 +117,11 @@ ShellRoot {
                     if (menuItem.menuOpen) menuItem.closeMenu()
                     else menuItem.openMenu()
                 }
+            }
+
+            IdleInhibitor {
+                window: parent
+                enabled: menuItem.coffeeMode
             }
         }
     }
