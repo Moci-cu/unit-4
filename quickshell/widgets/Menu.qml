@@ -334,20 +334,12 @@ Item {
         Rectangle {
             id:     panelContent
             anchors.fill: parent
-            color:  root.paper
-            border.color: "#8a00d4"; border.width: 3
+             color:  root.paper
+             border.color: root.ink; border.width: 1
 
-            // Spider-Verse comic background
-            Image {
-                anchors.fill: parent
-                source: "file://" + Quickshell.env("HOME") + "/.config/quickshell/texture/comic_bg.jpg"
-                fillMode: Image.Stretch
-                opacity: 0.85
-            }
-
-            // Chromatic overlays + glitch effect
-            Rectangle { id: chromaR; anchors.fill: parent; color: "#cc1a1a"; opacity: 0; z: 100 }
-            Rectangle { id: chromaC; x: 4; y: 2; width: parent.width; height: parent.height; color: "#00aaff"; opacity: 0; z: 100 }
+            // Glitch — NieR palette
+            Rectangle { id: chromaR; anchors.fill: parent; color: root.accent; opacity: 0; z: 100 }
+            Rectangle { id: chromaC; x: 4; y: 2; width: parent.width; height: parent.height; color: root.ink; opacity: 0; z: 100 }
             Rectangle { id: chromaB; y: 0; width: parent.width; height: 4; color: "#ffffff"; opacity: 0; z: 101 }
 
             Timer {
@@ -364,6 +356,15 @@ Item {
                     } else if (step === 5) { chromaR.opacity = 0; panelHost.x = ox
                     } else { panelHost.x = ox; chromaR.opacity = 0; chromaC.opacity = 0; chromaB.opacity = 0; step = 0; glitchTimer.stop() }
                 }
+            }
+
+            Repeater {
+                model: Math.floor(root.lw/20)+1
+                Rectangle { required property int index; x:index*20; y:0; width:1; height:root.lh; color:root.lineVsoft }
+            }
+            Repeater {
+                model: Math.floor(root.lh/20)+1
+                Rectangle { required property int index; x:0; y:index*20; width:root.lw; height:1; color:root.lineVsoft }
             }
 
             MouseArea {
@@ -421,7 +422,7 @@ Item {
                 Rectangle { anchors.bottom:parent.bottom; width:parent.width; height:1; color:root.lineSoft }
             }
 
-            Rectangle { anchors.top: header.bottom; width: parent.width; height: 3; color: "#8a00d4" }
+            Rectangle { anchors.top: header.bottom; width: parent.width; height: 1; color: root.lineSoft }
 
             Item {
                 id: body

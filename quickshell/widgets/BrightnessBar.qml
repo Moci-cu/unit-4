@@ -27,9 +27,9 @@ ShellRoot {
     FileView { id: dm; path: Quickshell.env("HOME") + "/.config/quickshell/dark-mode.state"; onLoaded: {  } }
     Timer { interval: 200; running: true; repeat: false; onTriggered: dm.reload() }
 
-    readonly property color colFilled: root.darkMode ? "#00aaff" : "#a89a7e"
-    readonly property color colEmpty:  root.darkMode ? "#ffffff" : "#c8b89a"
-    readonly property color colBg:     "#0a0a0a"
+    readonly property color colFilled: "#a89a7e"
+    readonly property color colEmpty:  "#c8b89a"
+    readonly property color colBg:     "#0f0d0a"
 
     property real brightness: -1
     property bool userInteracting: false
