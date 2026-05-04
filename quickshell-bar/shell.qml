@@ -21,7 +21,7 @@ ShellRoot {
     readonly property color ink:       root.darkMode ? "#ffffff" : "#463f2e"
     readonly property color inkStrong: root.darkMode ? "#ffffff" : "#2e2a1f"
     readonly property color inkSoft:   root.darkMode ? "#8a8a8a" : "#7a7358"
-    readonly property color lineVsoft: root.darkMode ? Qt.rgba(204/255,26/255,26/255,0.10) : Qt.rgba(70/255,63/255,46/255,0.12)
+    readonly property color lineVsoft: root.darkMode ? Qt.rgba(204/255,26/255,26/255,0.30) : Qt.rgba(70/255,63/255,46/255,0.12)
     readonly property color lineSoft:  root.darkMode ? Qt.rgba(204/255,26/255,26/255,0.30) : Qt.rgba(70/255,63/255,46/255,0.25)
     readonly property color accent:    root.darkMode ? "#cc1a1a" : "#6e2a2a"
     readonly property color inactiveBg: root.darkMode ? Qt.rgba(255/255,255/255,255/255,0.06) : Qt.rgba(70/255,63/255,46/255,0.22)
@@ -219,7 +219,7 @@ ShellRoot {
                         required property int index
                         x: index * 24
                         y: 0
-                        width: 3; height: 3; radius: 1.5
+                        width: 4; height: 4; radius: 2
                         color: root.lineVsoft
                     }
                 }
@@ -229,7 +229,7 @@ ShellRoot {
                         required property int index
                         x: 0
                         y: index * 24
-                        width: 3; height: 3; radius: 1.5
+                        width: 4; height: 4; radius: 2
                         color: root.lineVsoft
                     }
                 }

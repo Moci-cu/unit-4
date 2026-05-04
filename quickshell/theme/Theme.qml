@@ -21,7 +21,7 @@ QtObject {
   readonly property color inkStrong: "#ffffff"
   readonly property color inkSoft:   "#8a8a8a"
   readonly property color lineSoft:  Qt.rgba(204/255,26/255,26/255,0.30)
-  readonly property color lineVsoft: Qt.rgba(204/255,26/255,26/255,0.10)
+  readonly property color lineVsoft: Qt.rgba(204/255,26/255,26/255,0.15)
 
   // ── Accents ──
   readonly property color a1:     "#cc1a1a"

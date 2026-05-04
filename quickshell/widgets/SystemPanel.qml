@@ -101,11 +101,11 @@ Item {
 
             Repeater {
                 model: Math.floor(parent.width / 24) + 1
-                Rectangle { required property int index; x: index * 24; y: 2; width: 3; height: 3; radius: 1.5; color: root.lineVsoft }
+                Rectangle { required property int index; x: index * 24; y: 2; width: 4; height: 4; radius: 2; color: root.lineVsoft }
             }
             Repeater {
                 model: Math.floor(parent.height / 24) + 1
-                Rectangle { required property int index; x: 2; y: index * 24; width: 3; height: 3; radius: 1.5; color: root.lineVsoft }
+                Rectangle { required property int index; x: 2; y: index * 24; width: 4; height: 4; radius: 2; color: root.lineVsoft }
             }
 
             // Header

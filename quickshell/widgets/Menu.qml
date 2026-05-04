@@ -38,6 +38,7 @@ Item {
     property int  nightTemp: 4000
 
     // ── TLP current profile ──
+    // ── TLP current profile ──
     property string tlpProfile: ""
 
     // ── Coffee mode (keep screen awake) ──
@@ -334,15 +335,35 @@ Item {
             id:     panelContent
             anchors.fill: parent
             color:  root.paper
-            border.color: root.ink; border.width: 1
+            border.color: "#8a00d4"; border.width: 3
 
-            Repeater {
-                model: Math.floor(root.lw/20)+1
-                Rectangle { required property int index; x:index*20; y:0; width:1; height:root.lh; color:root.lineVsoft }
+            // Spider-Verse comic background
+            Image {
+                anchors.fill: parent
+                source: "file://" + Quickshell.env("HOME") + "/.config/quickshell/texture/comic_bg.jpg"
+                fillMode: Image.Stretch
+                opacity: 0.85
             }
-            Repeater {
-                model: Math.floor(root.lh/20)+1
-                Rectangle { required property int index; x:0; y:index*20; width:root.lw; height:1; color:root.lineVsoft }
+
+            // Chromatic overlays + glitch effect
+            Rectangle { id: chromaR; anchors.fill: parent; color: "#cc1a1a"; opacity: 0; z: 100 }
+            Rectangle { id: chromaC; x: 4; y: 2; width: parent.width; height: parent.height; color: "#00aaff"; opacity: 0; z: 100 }
+            Rectangle { id: chromaB; y: 0; width: parent.width; height: 4; color: "#ffffff"; opacity: 0; z: 101 }
+
+            Timer {
+                id: glitchTimer
+                interval: 40; running: false; repeat: true
+                property int step: 0
+                property real ox: 0
+                onTriggered: {
+                    step++
+                    if (step === 1) { chromaR.opacity = 0.35; chromaC.opacity = 0.25; panelHost.x = ox + 8
+                    } else if (step === 2) { panelHost.x = ox - 10; chromaR.opacity = 0.15; chromaC.opacity = 0.35
+                    } else if (step === 3) { panelHost.x = ox + 4; chromaR.opacity = 0; chromaC.opacity = 0; chromaB.opacity = 0.6; chromaB.y = parent.height * 0.3
+                    } else if (step === 4) { chromaB.opacity = 0; chromaR.opacity = 0.4; chromaC.opacity = 0
+                    } else if (step === 5) { chromaR.opacity = 0; panelHost.x = ox
+                    } else { panelHost.x = ox; chromaR.opacity = 0; chromaC.opacity = 0; chromaB.opacity = 0; step = 0; glitchTimer.stop() }
+                }
             }
 
             MouseArea {
@@ -399,6 +420,8 @@ Item {
                 }
                 Rectangle { anchors.bottom:parent.bottom; width:parent.width; height:1; color:root.lineSoft }
             }
+
+            Rectangle { anchors.top: header.bottom; width: parent.width; height: 3; color: "#8a00d4" }
 
             Item {
                 id: body
@@ -736,6 +759,7 @@ text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
         searchQuery = ""; focusIdx = 0; currentCat = "all"; searchInput.text = ""
         if (!appsLoaded) desktopReader.running = true
         panelHost.visible = true; panelHost.x = (root.screenW - root.lw) / 2
+        glitchTimer.ox = panelHost.x; glitchTimer.step = 0; glitchTimer.start()
         panelHost.opacity = 1; panelHost.scale = 1
         scanAnim.start(); focusTimer.attempts = 0; focusTimer.restart()
         tlpGetProc.running = true
@@ -744,6 +768,9 @@ text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
     function closeMenu() {
         if (!menuOpen) return
         menuOpen = false; animRunning = true
+        glitchTimer.stop(); glitchTimer.step = 0
+        chromaR.opacity = 0; chromaC.opacity = 0; chromaB.opacity = 0
+        panelHost.x = (root.screenW - root.lw) / 2
         panelHost.opacity = 0; panelHost.scale = 0.96
         hideDone.restart()
     }
