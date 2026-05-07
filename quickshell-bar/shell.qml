@@ -12,6 +12,18 @@ pragma ComponentBehavior: Bound
 ShellRoot {
     id: root
 
+    // ── Bar toggle ──
+    property bool barVisible: true
+    IpcHandler {
+        target: "bar"
+        function toggle(): void { root.barVisible = !root.barVisible }
+    }
+
+    GlobalShortcut {
+        name: "barToggle"
+        onPressed: { root.barVisible = !root.barVisible }
+    }
+
     property string dmState: "0"
     readonly property bool darkMode: dmState === "1"
     FileView { id: dmFile; path: Quickshell.env("HOME") + "/.config/quickshell/dark-mode.state"; onLoaded: { root.dmState = text().trim() } }
@@ -59,6 +71,15 @@ ShellRoot {
         return map
     }
 
+    // Event-driven: refresh toplevels only when windows change
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            var n = event?.name || ""
+            if (n === "openwindow" || n === "closewindow" || n === "movewindow" || n === "activewindow")
+                Hyprland.refreshToplevels()
+        }
+    }
 
     readonly property string activeTitle: {
         var at = Hyprland.activeToplevel
@@ -205,6 +226,7 @@ ShellRoot {
             implicitHeight: root.barHeight
             color: "transparent"
             WlrLayershell.namespace: "quickshell-bar"
+            visible: root.barVisible
 
             Rectangle {
                 id: barBg

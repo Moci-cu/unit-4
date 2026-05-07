@@ -100,12 +100,12 @@ Item {
             Rectangle { x: parent.width - 1; y: parent.height - 1; width: 2; height: 2; color: root.ink }
 
             Repeater {
-                model: Math.floor(parent.width / 24) + 1
-                Rectangle { required property int index; x: index * 24; y: 2; width: 4; height: 4; radius: 2; color: root.lineVsoft }
+                model: Math.floor(parent.width / root.gridSize) + 1
+                Rectangle { required property int index; x: index * root.gridSize; y: 0; width: 1; height: parent.height; color: root.lineVsoft }
             }
             Repeater {
-                model: Math.floor(parent.height / 24) + 1
-                Rectangle { required property int index; x: 2; y: index * 24; width: 4; height: 4; radius: 2; color: root.lineVsoft }
+                model: Math.floor(parent.height / root.gridSize) + 1
+                Rectangle { required property int index; x: 0; y: index * root.gridSize; width: parent.width; height: 1; color: root.lineVsoft }
             }
 
             // Header

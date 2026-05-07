@@ -13,6 +13,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.Notifications
 import Quickshell.Wayland
 
@@ -20,6 +21,18 @@ pragma ComponentBehavior: Bound
 
 Scope {
     id: root
+
+    // ── Dark mode ──
+    readonly property bool darkMode: dm.text().trim() === "1"
+    FileView { id: dm; path: Quickshell.env("HOME") + "/.config/quickshell/dark-mode.state" }
+    Timer { interval: 200; running: true; repeat: false; onTriggered: dm.reload() }
+
+    readonly property color paper:     root.darkMode ? "#1a1814" : "#d6cfb5"
+    readonly property color ink:       root.darkMode ? "#8a7530" : "#463f2e"
+    readonly property color inkSoft:   root.darkMode ? "#7a7030" : "#7a7358"
+    readonly property color accent:    root.darkMode ? "#a04040" : "#6e2a2a"
+    readonly property color lineVsoft: root.darkMode ? Qt.rgba(200/255,168/255,96/255,0.10) : Qt.rgba(70/255,63/255,46/255,0.10)
+    readonly property int gridSize: 12
 
     readonly property int topOffsetPercent: 6
     readonly property int leftMargin: 24
@@ -137,9 +150,9 @@ Scope {
 
         readonly property int urgency: notification ? notification.urgency : 1
         readonly property color accentColor: {
-            if (urgency === 2) return "#6e2a2a";
-            if (urgency === 0) return "#7a7358";
-            return "#463f2e";
+            if (urgency === 2) return root.accent;
+            if (urgency === 0) return root.inkSoft;
+            return root.ink;
         }
 
         readonly property string urgencyLabel: {
@@ -279,9 +292,19 @@ Scope {
             width: parent.width
             implicitHeight: contentCol.implicitHeight + 12
 
-            color: "#d6cfb5"
-            border.color: "#463f2e"
+            color: root.paper
+            border.color: root.ink
             border.width: 1
+
+            // 2D grid (NieR style)
+            Repeater {
+                model: Math.floor(parent.width / root.gridSize) + 1
+                Rectangle { required property int index; x: index * root.gridSize; y: 0; width: 1; height: parent.height; color: root.lineVsoft }
+            }
+            Repeater {
+                model: Math.floor((contentCol.implicitHeight + 12) / root.gridSize) + 1
+                Rectangle { required property int index; x: 0; y: index * root.gridSize; width: parent.width; height: 1; color: root.lineVsoft }
+            }
 
             // Bordure gauche colorée
             Rectangle {
@@ -304,7 +327,7 @@ Scope {
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
                     GradientStop { position: 0.0; color: "transparent" }
-                    GradientStop { position: 0.5; color: "#406e2a2a" }
+                    GradientStop { position: 0.5; color: root.accent }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
                 opacity: scanProgress > 0 && scanProgress < 1 ? 1 : 0
@@ -360,7 +383,7 @@ Scope {
                             id: urgLabel
                             anchors.centerIn: parent
                             text: notif.urgencyLabel
-                            color: "#d6cfb5"
+                            color: root.paper
                             font.family: "Ndot 57"
                             font.pixelSize: 8
                             font.weight: Font.Medium
@@ -370,7 +393,7 @@ Scope {
 
                     Text {
                         text: notif.urgencyJp
-                        color: "#7a7358"
+                        color: root.inkSoft
                         font.family: "Ndot77JPExtended"
                         font.pixelSize: 9
                     }
@@ -380,7 +403,7 @@ Scope {
                         text: notif.notification
                               ? (notif.notification.appName || "SYSTEM").toUpperCase()
                               : "SYSTEM"
-                        color: "#7a7358"
+                        color: root.inkSoft
                         font.family: "Ndot 57"
                         font.pixelSize: 8
                         font.letterSpacing: 2
@@ -393,7 +416,7 @@ Scope {
                             const p = n => String(n).padStart(2, '0');
                             return `${p(d.getHours())}:${p(d.getMinutes())}`;
                         }
-                        color: "#7a7358"
+                        color: root.inkSoft
                         font.family: "Ndot 57"
                         font.pixelSize: 8
                         font.letterSpacing: 1
@@ -403,7 +426,7 @@ Scope {
                         Layout.preferredWidth: 16
                         Layout.preferredHeight: 14
                         color: closeMouse.containsMouse ? notif.accentColor : "transparent"
-                        border.color: "#463f2e"
+                        border.color: root.ink
                         border.width: 1
 
                         Behavior on color { ColorAnimation { duration: 120 } }
@@ -430,7 +453,7 @@ Scope {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 1
-                    color: "#463f2e"
+                    color: root.ink
                     opacity: 0.2
                 }
 
@@ -469,7 +492,7 @@ Scope {
                         Rectangle {
                             anchors.fill: parent
                             color: "transparent"
-                            border.color: "#463f2e"
+                            border.color: root.ink
                             border.width: 1
                         }
 
@@ -485,7 +508,7 @@ Scope {
                             Text {
                                 anchors.centerIn: parent
                                 text: String(notif.itemIndex + 1).padStart(2, '0')
-                                color: "#d6cfb5"
+                                color: root.paper
                                 font.family: "Ndot 57"
                                 font.pixelSize: 7
                                 font.letterSpacing: 0.5
@@ -553,7 +576,7 @@ Scope {
                         Text {
                             Layout.fillWidth: true
                             text: notif.notification ? notif.notification.body : ""
-                            color: "#463f2e"
+                            color: root.ink
                             font.family: "Ndot 57"
                             font.pixelSize: 11
                             font.weight: Font.Light
@@ -585,7 +608,7 @@ Scope {
                             Layout.preferredHeight: 22
                             Layout.preferredWidth: actionText.implicitWidth + 16
                             color: actMouse.containsMouse ? "#463f2e" : "transparent"
-                            border.color: "#463f2e"
+                            border.color: root.ink
                             border.width: 1
 
                             Behavior on color { ColorAnimation { duration: 120 } }
