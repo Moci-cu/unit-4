@@ -83,6 +83,9 @@ Item {
         visible: root.panelOpen || root.animRunning
         opacity: root.panelOpen ? 1 : 0
         scale: root.panelOpen ? 1 : 0.96
+        focus: root.panelOpen
+
+        Keys.onEscapePressed: root.closePanel()
 
         Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }

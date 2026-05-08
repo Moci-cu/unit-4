@@ -203,6 +203,9 @@ Item {
         clip: true
         visible: root.panelOpen || root.animRunning
         opacity: root.panelOpen ? 1 : 0
+        focus: root.panelOpen
+
+        Keys.onEscapePressed: root.closePanel()
 
         Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
 
