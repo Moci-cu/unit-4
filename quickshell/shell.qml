@@ -3,6 +3,9 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import Quickshell.Bluetooth
+import Quickshell.Services.UPower
+import Quickshell.Networking
 import QtQuick
 import "widgets"
 import "components"
@@ -51,6 +54,9 @@ ShellRoot {
 
     // ── BRIGHTNESSBAR ──
     BrightnessBar {}
+
+    // ── BAR (in-process, merged from quickshell-bar) ──
+    Bar {}
 
     property string currentUser: Quickshell.env("USER") || "user"
 
