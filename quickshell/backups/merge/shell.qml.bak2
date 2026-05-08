@@ -46,11 +46,6 @@ ShellRoot {
         onPressed: {} // lock screen handles own focus
     }
 
-    GlobalShortcut {
-        name: "networkToggle"
-        onPressed: { networkPanel.togglePanel("wifi") }
-    }
-
     // ── NOTIFICATIONS ──
     Notifications {}
 
@@ -61,15 +56,7 @@ ShellRoot {
     BrightnessBar {}
 
     // ── BAR (in-process, merged from quickshell-bar) ──
-    Bar {
-        id: barWidget
-        onOpenPanel: function(tab) { networkPanel.togglePanel(tab) }
-    }
-
-    // ── NETWORK PANEL (in-process, merged from quickshell-network) ──
-    NetworkPanel {
-        id: networkPanel
-    }
+    Bar {}
 
     property string currentUser: Quickshell.env("USER") || "user"
 

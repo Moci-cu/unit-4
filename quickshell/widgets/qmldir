@@ -7,3 +7,5 @@ VolumeBar 1.0 VolumeBar.qml
 BrightnessBar 1.0 BrightnessBar.qml
 SystemPanel 1.0 SystemPanel.qml
 Bar 1.0 Bar.qml
+NetworkPanel 1.0 NetworkPanel.qml
+NetworkPopup 1.0 NetworkPopup.qml

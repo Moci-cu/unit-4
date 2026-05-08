@@ -13,6 +13,8 @@ pragma ComponentBehavior: Bound
 Item {
     id: root
 
+    signal openPanel(string tab)
+
     // ── Bar toggle ──
     property bool barVisible: true
     IpcHandler {
@@ -304,7 +306,7 @@ Item {
                             Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; color:root.inkStrong; opacity:0.85; text:"BT"; anchors.verticalCenter:parent.verticalCenter }
                             Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; opacity:0.8; text:root.btOn?(root.btConn?"ON":"--"):"OFF"; anchors.verticalCenter:parent.verticalCenter; color:root.btOn?(root.btConn?"#8a6a30":root.inkSoft):root.inkSoft }
                         }
-                        MouseArea { anchors.fill:parent; anchors.margins:-4; onClicked:Quickshell.execDetached(["sh","-c","echo 'open:bt:" + Date.now() + "' > $XDG_RUNTIME_DIR/qs-netpanel-cmd"]) }
+                        MouseArea { anchors.fill:parent; anchors.margins:-4; onClicked: root.openPanel("bt") }
                     }
 
                     Item { width:1; height:1 }
@@ -316,7 +318,7 @@ Item {
                             Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; color:root.inkStrong; opacity:0.85; text:"WF"; anchors.verticalCenter:parent.verticalCenter }
                             Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; opacity:0.8; text:root.wifiSsid||"---"; elide:Text.ElideRight; anchors.verticalCenter:parent.verticalCenter; color:root.wifiSsid?"#8a6a30":root.inkSoft }
                         }
-                        MouseArea { anchors.fill:parent; anchors.margins:-4; onClicked:Quickshell.execDetached(["sh","-c","echo 'open:wifi:" + Date.now() + "' > $XDG_RUNTIME_DIR/qs-netpanel-cmd"]) }
+                        MouseArea { anchors.fill:parent; anchors.margins:-4; onClicked: root.openPanel("wifi") }
                     }
 
                     Item { width:1; height:1 }
