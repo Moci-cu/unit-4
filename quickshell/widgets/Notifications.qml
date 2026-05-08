@@ -297,13 +297,21 @@ Scope {
             border.width: 1
 
             // 2D grid (NieR style)
-            Repeater {
-                model: Math.floor(parent.width / root.gridSize) + 1
-                Rectangle { required property int index; x: index * root.gridSize; y: 0; width: 1; height: parent.height; color: root.lineVsoft }
-            }
-            Repeater {
-                model: Math.floor((contentCol.implicitHeight + 12) / root.gridSize) + 1
-                Rectangle { required property int index; x: 0; y: index * root.gridSize; width: parent.width; height: 1; color: root.lineVsoft }
+            Canvas {
+                id: notifGrid
+                anchors.fill: parent
+                z: 0
+                onPaint: {
+                    const ctx = getContext("2d")
+                    ctx.strokeStyle = root.lineVsoft
+                    ctx.lineWidth = 1
+                    for (let x = 0; x < width; x += root.gridSize) {
+                        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke()
+                    }
+                    for (let y = 0; y < height; y += root.gridSize) {
+                        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke()
+                    }
+                }
             }
 
             // Bordure gauche colorée
@@ -334,29 +342,6 @@ Scope {
                 Behavior on opacity { NumberAnimation { duration: 100 } }
                 clip: true
                 z: 2
-            }
-
-            // Grille interne décorative
-            Canvas {
-                anchors.fill: parent
-                anchors.leftMargin: 3
-                opacity: 0.18
-                z: 0
-                onPaint: {
-                    const ctx = getContext("2d");
-                    ctx.strokeStyle = "rgba(70, 63, 46, 0.25)";
-                    ctx.lineWidth = 1;
-                    for (let x = 0; x < width; x += 16) {
-                        ctx.beginPath();
-                        ctx.moveTo(x, 0); ctx.lineTo(x, height);
-                        ctx.stroke();
-                    }
-                    for (let y = 0; y < height; y += 16) {
-                        ctx.beginPath();
-                        ctx.moveTo(0, y); ctx.lineTo(width, y);
-                        ctx.stroke();
-                    }
-                }
             }
 
             ColumnLayout {
