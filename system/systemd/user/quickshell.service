@@ -5,6 +5,8 @@ After=graphical-session.target
 [Service]
 Environment=QT_MEDIA_BACKEND=ffmpeg
 ExecStart=/usr/bin/qs
+StartLimitBurst=5
+StartLimitIntervalSec=30
 Restart=always
 RestartSec=3
 

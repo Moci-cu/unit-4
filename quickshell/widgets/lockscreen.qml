@@ -3,6 +3,7 @@ import QtMultimedia
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Services.Pam
 
 pragma ComponentBehavior: Bound
 
@@ -24,40 +25,36 @@ ShellRoot {
     property bool   lockError:   false
     property bool   lockPending: false
 
-    property string currentUser: "user"
-    Process {
-        id: getUserProc; command:["sh","-c","echo $USER"]; running:true
-        stdout: SplitParser { onRead: data => { var u=data.trim(); if(u!=="") root.currentUser=u } }
-    }
+    property string currentUser: Quickshell.env("USER") || "user"
 
-    Process {
-        id: authProc
-        command:["/bin/bash","-c",
-            "printf '%s\\n' \"$LOCKPWD\" | pamtester qs-lock \"$LOCKUSER\" authenticate >/dev/null 2>&1 && echo OK || echo FAIL"]
-        running: false
-        property string envPwd:""; property string envUser:""
-        environment:({"LOCKPWD":authProc.envPwd,"LOCKUSER":authProc.envUser})
-        stdout: StdioCollector { onStreamFinished: {
+    PamContext {
+        id: pam
+        config: "qs-lock"
+        onPamMessage: {
+            if (this.responseRequired) {
+                this.respond(root.lockInput)
+            }
+        }
+        onCompleted: result => {
             root.lockPending = false
-            if (this.text.trim() === "OK") {
+            if (result == PamResult.Success) {
                 root.lockInput = ""
                 root.lockError = false
-                root.doHide()   // auth OK → lancer hide
+                root.doHide()
             } else {
                 root.lockError = true
                 root.lockInput = ""
                 errTimer.restart()
             }
-        }}
+        }
     }
+
     Timer { id:errTimer; interval:800; repeat:false; onTriggered: root.lockError=false }
 
     function doAuth() {
         if (root.lockPending || root.lockInput === "") return
         root.lockPending = true
-        authProc.envPwd  = root.lockInput
-        authProc.envUser = root.currentUser
-        authProc.running = true
+        pam.start()
     }
 
     function doHide() {

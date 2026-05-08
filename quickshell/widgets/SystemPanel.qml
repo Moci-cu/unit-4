@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.UPower
+import "../theme"
 
 pragma ComponentBehavior: Bound
 
@@ -18,9 +19,7 @@ Item {
     readonly property int gridSize: 12
 
     // ── Dark mode ──
-    readonly property bool darkMode: dm.text().trim() === "1"
-    FileView { id: dm; path: Quickshell.env("HOME") + "/.config/quickshell/dark-mode.state"; onLoaded: {  } }
-    Timer { interval: 200; running: true; repeat: false; onTriggered: dm.reload() }
+    readonly property bool darkMode: Theme.darkMode
 
     readonly property color paper:     root.darkMode ? "#1a1814" : "#d6cfb5"
     readonly property color ink:       root.darkMode ? "#8a7530" : "#463f2e"

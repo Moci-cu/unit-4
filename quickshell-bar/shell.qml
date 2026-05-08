@@ -42,33 +42,22 @@ ShellRoot {
     readonly property int barHeight: 40
     readonly property int gridSize:  12
 
-    readonly property var wsLabels: [
-        "いち","に","さん","し","ご",
-        "ろく","しち","はち","きゅう","じゅう"
-    ]
-
-    readonly property var wsHasApp: {
-        var map = {}
-        var vals = Hyprland.toplevels.values
-        for (var i = 0; i < vals.length; i++) {
-            var t = vals[i]
-            if (t && t.workspace) map[t.workspace.id] = true
-        }
-        return map
-    }
-
-    readonly property var wsTopClass: {
-        var map = {}
+    readonly property var wsProps: {
+        var hasApp = {}
+        var topClass = {}
         var vals = Hyprland.toplevels.values
         for (var i = 0; i < vals.length; i++) {
             var t = vals[i]
             if (t && t.workspace) {
-                var cls = t.lastIpcObject?.initialClass || t.lastIpcObject?.class
-                var c = ((cls || "")[0] || "?")[0].toUpperCase()
-                if (!map[t.workspace.id]) map[t.workspace.id] = c
+                var wid = t.workspace.id
+                hasApp[wid] = true
+                if (!topClass[wid]) {
+                    var cls = t.lastIpcObject?.initialClass || t.lastIpcObject?.class
+                    topClass[wid] = ((cls || "")[0] || "?")[0].toUpperCase()
+                }
             }
         }
-        return map
+        return { hasApp: hasApp, topClass: topClass }
     }
 
     // Event-driven: refresh toplevels only when windows change
@@ -289,7 +278,7 @@ ShellRoot {
 
                                     Text {
                                         anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter; verticalCenterOffset: -2 }
-                                        text: parent.isActive ? "◆" : (root.wsHasApp[wsId] ? root.wsTopClass[wsId] : "◈")
+                                        text: parent.isActive ? "◆" : (root.wsProps.hasApp[wsId] ? root.wsProps.topClass[wsId] : "◈")
                                         font.family: "Ndot 57"; font.pixelSize: 13
                                         color: parent.isActive ? root.paper : root.ink
                                     }
@@ -326,7 +315,7 @@ ShellRoot {
                             Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; color:root.inkStrong; opacity:0.85; text:"BT"; anchors.verticalCenter:parent.verticalCenter }
                             Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; opacity:0.8; text:root.btOn?(root.btConn?"ON":"--"):"OFF"; anchors.verticalCenter:parent.verticalCenter; color:root.btOn?(root.btConn?"#8a6a30":root.inkSoft):root.inkSoft }
                         }
-                        MouseArea { anchors.fill:parent; anchors.margins:-4; onClicked:Quickshell.execDetached(["sh","-c","echo 'open:bt:'$(date +%s%N) > $XDG_RUNTIME_DIR/qs-netpanel-cmd"]) }
+                        MouseArea { anchors.fill:parent; anchors.margins:-4; onClicked:Quickshell.execDetached(["sh","-c","echo 'open:bt:" + Date.now() + "' > $XDG_RUNTIME_DIR/qs-netpanel-cmd"]) }
                     }
 
                     Item { width:1; height:1 }
@@ -338,7 +327,7 @@ ShellRoot {
                             Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; color:root.inkStrong; opacity:0.85; text:"WF"; anchors.verticalCenter:parent.verticalCenter }
                             Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; opacity:0.8; text:root.wifiSsid||"---"; elide:Text.ElideRight; anchors.verticalCenter:parent.verticalCenter; color:root.wifiSsid?"#8a6a30":root.inkSoft }
                         }
-                        MouseArea { anchors.fill:parent; anchors.margins:-4; onClicked:Quickshell.execDetached(["sh","-c","echo 'open:wifi:'$(date +%s%N) > $XDG_RUNTIME_DIR/qs-netpanel-cmd"]) }
+                        MouseArea { anchors.fill:parent; anchors.margins:-4; onClicked:Quickshell.execDetached(["sh","-c","echo 'open:wifi:" + Date.now() + "' > $XDG_RUNTIME_DIR/qs-netpanel-cmd"]) }
                     }
 
                     Item { width:1; height:1 }
@@ -357,10 +346,6 @@ ShellRoot {
                     property real tightSide: Math.max(leftSide, rightSide)
                     property real maxW: Math.max(barBg.width - 2 * tightSide, 0)
                     width: Math.min(wsRow.width, maxW)
-
-                    Behavior on width {
-                        animation: NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
-                    }
                 }
 
                 Row {

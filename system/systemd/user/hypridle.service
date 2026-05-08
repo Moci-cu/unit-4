@@ -4,6 +4,8 @@ After=graphical-session.target
 
 [Service]
 ExecStart=/usr/bin/hypridle
+StartLimitBurst=5
+StartLimitIntervalSec=30
 Restart=always
 RestartSec=3
 

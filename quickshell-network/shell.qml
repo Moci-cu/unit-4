@@ -13,7 +13,7 @@ ShellRoot {
     property string lastCmd: ""
 
     Timer {
-        interval: 400; running: true; repeat: true
+        interval: 1000; running: true; repeat: true
         onTriggered: cmdFile.reload()
     }
 

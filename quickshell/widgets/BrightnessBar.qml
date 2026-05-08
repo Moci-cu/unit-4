@@ -22,11 +22,6 @@ ShellRoot {
     readonly property int segActiveW: 22
     readonly property int segActiveH: 5
 
-    // ── Dark mode ──
-    readonly property bool darkMode: dm.text().trim() === "1"
-    FileView { id: dm; path: Quickshell.env("HOME") + "/.config/quickshell/dark-mode.state"; onLoaded: {  } }
-    Timer { interval: 200; running: true; repeat: false; onTriggered: dm.reload() }
-
     readonly property color colFilled: "#a89a7e"
     readonly property color colEmpty:  "#c8b89a"
     readonly property color colBg:     "#0f0d0a"
@@ -67,10 +62,13 @@ ShellRoot {
     function setBrightness(v) {
         v = Math.max(0, Math.min(1, v))
         root.brightness = v
-        var pct = Math.round(v * 100)
-        setProc.command = ["brightnessctl", "set", pct + "%", "--quiet"]
-        setProc.running = true
+        setDebounce.restart()
     }
+
+    Timer { id: setDebounce; interval: 50; repeat: false; onTriggered: {
+        setProc.command = ["brightnessctl", "set", Math.round(root.brightness * 100) + "%", "--quiet"]
+        setProc.running = true
+    }}
 
     // ── Initial read on startup ──
     Timer { interval: 200; running: true; repeat: false; onTriggered: root.readBrightness() }

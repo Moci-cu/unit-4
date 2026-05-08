@@ -18,6 +18,11 @@ Item {
     property bool   animRunning:     false
     property string currentCat: "all"
     property string searchQuery: ""
+    property string effectiveQuery: ""
+
+    Timer { id: searchDebounce; interval: 100; repeat: false;
+        onTriggered: root.effectiveQuery = root.searchQuery
+    }
     property int    focusIdx:   0
     property string clockStr:   "--:--:--"
 
@@ -106,6 +111,19 @@ Item {
         return catOrder.filter(function(k) { return present[k] })
     }
 
+    readonly property var catCounts: {
+        var c = {}
+        for (var i = 0; i < apps.length; i++) {
+            var cat = apps[i].cat
+            c[cat] = (c[cat] || 0) + 1
+        }
+        for (var j = 0; j < specialItems.length; j++) {
+            var cat2 = specialItems[j].cat
+            c[cat2] = (c[cat2] || 0) + 1
+        }
+        return c
+    }
+
     function _allItems() {
         var merged = apps.slice()
         merged.push.apply(merged, specialItems)
@@ -113,7 +131,7 @@ Item {
     }
 
     readonly property var filteredApps: {
-        var q = searchQuery.toLowerCase().trim()
+        var q = effectiveQuery.toLowerCase().trim()
         return _allItems().filter(function(a) {
             var catOk = currentCat === "all" || a.cat === currentCat
             if (!q) return catOk
@@ -320,6 +338,7 @@ Item {
         desktopReader.running = true
         nightStateRead.running = true
         coffeeRead.running = true
+        tlpGetProc.running = true
     }
 
     Item {
@@ -473,7 +492,7 @@ Item {
                                 }
                                 Text {
                                     anchors { right:parent.right; rightMargin:12; verticalCenter:parent.verticalCenter }
-                                    text: root._allItems().filter(function(a){ return modelData==="all"||a.cat===modelData }).length.toString().padStart(2,"0")
+                                    text: (root.catCounts[modelData] || (modelData === "all" ? root.apps.length + 9 : 0)).toString().padStart(2,"0")
                                     font.family:root.ff; font.pixelSize:13; font.letterSpacing:1
                                     color: parent.isActive ? Qt.rgba(214/255,207/255,181/255,0.6) : Qt.rgba(122/255,115/255,88/255,0.5)
                                 }
@@ -533,7 +552,7 @@ Item {
                                         selectByMouse:true
                                         text:         root.searchQuery
 
-                                        onTextEdited: { root.searchQuery=text; root.focusIdx=0 }
+                                        onTextEdited: { root.searchQuery=text; root.focusIdx=0; searchDebounce.restart() }
 
                                         Keys.onPressed: function(event) {
                                             if (event.modifiers & Qt.ControlModifier) {
@@ -762,13 +781,12 @@ text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
     function openMenu() {
         if (menuOpen) return
         menuOpen    = true; animRunning = true
-        searchQuery = ""; focusIdx = 0; currentCat = "all"; searchInput.text = ""
+        searchQuery = ""; effectiveQuery = ""; focusIdx = 0; currentCat = "all"; searchInput.text = ""
         if (!appsLoaded) desktopReader.running = true
         panelHost.visible = true; panelHost.x = (root.screenW - root.lw) / 2
         glitchTimer.ox = panelHost.x; glitchTimer.step = 0; glitchTimer.start()
         panelHost.opacity = 1; panelHost.scale = 1
         scanAnim.start(); focusTimer.attempts = 0; focusTimer.restart()
-        tlpGetProc.running = true
     }
 
     function closeMenu() {
