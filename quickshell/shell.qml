@@ -51,6 +51,11 @@ ShellRoot {
         onPressed: { networkPanel.togglePanel("wifi") }
     }
 
+    GlobalShortcut {
+        name: "syspanelToggle"
+        onPressed: { root.sysPanelFireToggle() }
+    }
+
     // ── NOTIFICATIONS ──
     Notifications {}
 
