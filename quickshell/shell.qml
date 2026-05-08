@@ -20,6 +20,29 @@ ShellRoot {
     }
     Timer { interval: 100; running: true; repeat: false; onTriggered: dmFile.reload() }
 
+    // ── Coffee mode (ii-vynx IdleInhibitor pattern) ──
+    property bool coffeeMode: false
+    IdleInhibitor {
+        id: idleInhibitor
+        window: PanelWindow {
+            implicitWidth: 0; implicitHeight: 0
+            color: "transparent"
+            anchors { right: true; bottom: true }
+            mask: Region { item: null }
+        }
+        enabled: root.coffeeMode
+    }
+
+    // ── ii-vynx GlobalShortcuts ──
+    GlobalShortcut {
+        name: "lock"
+        onPressed: Quickshell.execDetached([Quickshell.env("HOME") + "/.config/quickshell/lock.sh"])
+    }
+    GlobalShortcut {
+        name: "lockFocus"
+        onPressed: {} // lock screen handles own focus
+    }
+
     // ── NOTIFICATIONS ──
     Notifications {}
 
@@ -78,10 +101,11 @@ ShellRoot {
                 }
             }
 
-            IdleInhibitor {
-                window: parent
-                enabled: menuItem.coffeeMode
+            Connections {
+                target: menuItem
+                function onCoffeeModeChanged() { root.coffeeMode = menuItem.coffeeMode }
             }
+
         }
     }
 

@@ -50,7 +50,11 @@ Item {
         command: ["cat", root.coffeeStateFile]
         running: false
         stdout: SplitParser {
-            onRead: data => { if (data.trim() === "1") root.coffeeMode = true }
+            onRead: data => {
+                if (data.trim() === "1") {
+                    root.coffeeMode = true
+                }
+            }
         }
     }
     Process {
