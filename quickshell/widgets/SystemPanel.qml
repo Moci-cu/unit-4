@@ -14,8 +14,8 @@ Item {
     property real screenW: 1920
     property real screenH: 1080
 
-    readonly property int panelW: 380
-    readonly property int panelH: 280
+    readonly property int panelW: 418
+    readonly property int panelH: 308
     readonly property int gridSize: 12
 
     // ── Dark mode ──

@@ -20,8 +20,8 @@ Item {
             root.wifiDevice.scannerEnabled = true
     }
 
-    readonly property int panelW: 360
-    readonly property int panelH: 440
+    readonly property int panelW: 396
+    readonly property int panelH: 484
     readonly property int gridSize: 12
 
     // ── Dark mode ──
