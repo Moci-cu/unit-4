@@ -220,26 +220,19 @@ Item {
                 border.color: root.ink
                 border.width: 2
 
-                Repeater {
-                    model: Math.floor(barBg.width / root.gridSize) + 1
-                    Rectangle {
-                        required property int index
-                        x: index * root.gridSize
-                        y: 0
-                        width: 1
-                        height: barBg.height
-                        color: root.lineVsoft
-                    }
-                }
-                Repeater {
-                    model: Math.floor(barBg.height / root.gridSize) + 1
-                    Rectangle {
-                        required property int index
-                        x: 0
-                        y: index * root.gridSize
-                        width: barBg.width
-                        height: 1
-                        color: root.lineVsoft
+                Canvas {
+                    id: barGrid
+                    anchors.fill: parent
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        ctx.strokeStyle = root.lineVsoft
+                        ctx.lineWidth = 1
+                        for (var x = 0; x < width; x += root.gridSize) {
+                            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke()
+                        }
+                        for (var y = 0; y < height; y += root.gridSize) {
+                            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke()
+                        }
                     }
                 }
 
