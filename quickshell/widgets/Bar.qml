@@ -42,20 +42,14 @@ Item {
 
     readonly property var wsProps: {
         var hasApp = {}
-        var topClass = {}
         var vals = Hyprland.toplevels.values
         for (var i = 0; i < vals.length; i++) {
             var t = vals[i]
             if (t && t.workspace) {
-                var wid = t.workspace.id
-                hasApp[wid] = true
-                if (!topClass[wid]) {
-                    var cls = t.lastIpcObject?.initialClass || t.lastIpcObject?.class
-                    topClass[wid] = ((cls || "")[0] || "?")[0].toUpperCase()
-                }
+                hasApp[t.workspace.id] = true
             }
         }
-        return { hasApp: hasApp, topClass: topClass }
+        return { hasApp: hasApp }
     }
 
     // Event-driven: refresh toplevels only when windows change
@@ -268,10 +262,11 @@ Item {
                                     border.color: root.inkSoft; border.width: 1
 
                                     Text {
+                                        readonly property bool isApp: root.wsProps.hasApp[wsId] && !parent.isActive
                                         anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter; verticalCenterOffset: -2 }
-                                        text: parent.isActive ? "◆" : (root.wsProps.hasApp[wsId] ? root.wsProps.topClass[wsId] : "◈")
-                                        font.family: "Ndot 57"; font.pixelSize: 13
-                                        color: parent.isActive ? root.paper : root.ink
+                                        text: parent.isActive ? "◆" : (isApp ? "!" : "◈")
+                                        font.family: "Ndot 57"; font.pixelSize: isApp ? 14 : 13; font.weight: isApp ? Font.Bold : Font.Normal
+                                        color: parent.isActive ? root.paper : (isApp ? root.accent : root.ink)
                                     }
 
                                     MouseArea {
