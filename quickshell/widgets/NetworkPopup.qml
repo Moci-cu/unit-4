@@ -193,20 +193,18 @@ Item {
         return root.btAdp.devices.length
     }
 
-    // ── Panel container (top-right corner) ──
+    // ── Panel container (centered) ──
     Item {
         id: panelHost
-        x: root.screenW - root.panelW - 12
-        y: 50
+        x: (root.screenW - root.panelW) / 2
+        y: (root.screenH - root.panelH) / 2
         width: root.panelW
         height: root.panelH
         clip: true
         visible: root.panelOpen || root.animRunning
         opacity: root.panelOpen ? 1 : 0
-        scale: root.panelOpen ? 1 : 0.96
 
         Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
-        Behavior on scale   { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
 
         Rectangle {
             anchors.fill: parent
@@ -847,7 +845,7 @@ Item {
         if (panelOpen) return
         panelOpen = true; animRunning = true
         panelHost.visible = true
-        panelHost.x = root.screenW - root.panelW - 12
+        panelHost.x = (root.screenW - root.panelW) / 2
         if (root.currentTab === "wifi" && root.wifiDevice) root.wifiDevice.scannerEnabled = true
     }
 
