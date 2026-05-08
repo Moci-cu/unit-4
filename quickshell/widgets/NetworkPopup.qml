@@ -233,15 +233,15 @@ Item {
                     anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: 18; rightMargin: 18 }
                     Row {
                         spacing: 8; anchors.verticalCenter: parent.verticalCenter
-                        Text { text: "◈"; font.family: root.ff; font.pixelSize: 11; color: root.accent; anchors.verticalCenter: parent.verticalCenter }
-                        Text { text: "NETWORK"; font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 3; font.weight: Font.Medium; color: root.inkStrong; anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: "◈"; font.family: root.ff; font.pixelSize: 12; color: root.accent; anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: "NETWORK"; font.family: root.ff; font.pixelSize: 12; font.letterSpacing: 3; font.weight: Font.Medium; color: root.inkStrong; anchors.verticalCenter: parent.verticalCenter }
                         Rectangle { width: 16; height: 1; color: root.inkSoft; anchors.verticalCenter: parent.verticalCenter }
-                        Text { text: "ネット"; font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 2; color: root.inkSoft; anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: "ネット"; font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 2; color: root.inkSoft; anchors.verticalCenter: parent.verticalCenter }
                     }
                     Item { width: parent.width - 280; height: 1 }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "×"; font.family: root.ff; font.pixelSize: 14; color: root.inkSoft
+                        text: "×"; font.family: root.ff; font.pixelSize: 15; color: root.inkSoft
                         MouseArea {
                             anchors.fill: parent
                             anchors.margins: -6
@@ -272,7 +272,7 @@ Item {
                         Text {
                             anchors.centerIn: parent
                             text: "WiFi"
-                            font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 2; font.weight: Font.Medium
+                            font.family: root.ff; font.pixelSize: 14; font.letterSpacing: 2; font.weight: Font.Medium
                             color: root.currentTab === "wifi" ? root.paper : root.inkSoft
                             Behavior on color { ColorAnimation { duration: 150 } }
                         }
@@ -291,7 +291,7 @@ Item {
                         Text {
                             anchors.centerIn: parent
                             text: "BT"
-                            font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 2; font.weight: Font.Medium
+                            font.family: root.ff; font.pixelSize: 14; font.letterSpacing: 2; font.weight: Font.Medium
                             color: root.currentTab === "bt" ? root.paper : root.inkSoft
                             Behavior on color { ColorAnimation { duration: 150 } }
                         }
@@ -315,7 +315,7 @@ Item {
                         visible: root.wifiLoading
                         anchors.centerIn: parent
                         text: "Initializing..."
-                        font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 2; color: root.inkSoft
+                        font.family: root.ff; font.pixelSize: 14; font.letterSpacing: 2; color: root.inkSoft
                     }
 
                     Column {
@@ -334,7 +334,7 @@ Item {
                                 spacing: 4
                                 Text {
                                     text: "Connected: " + (root.wifiConnected ? root.wifiConnected.name : "")
-                                    font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 1; font.weight: Font.Medium
+                                    font.family: root.ff; font.pixelSize: 14; font.letterSpacing: 1; font.weight: Font.Medium
                                     color: root.inkStrong; elide: Text.ElideRight
                                     width: parent.width
                                 }
@@ -344,13 +344,13 @@ Item {
                                         text: root.wifiConnected
                                             ? getIcon(root.wifiConnected.signalStrength) + " " + Math.round(root.wifiConnected.signalStrength * 100) + "%"
                                             : ""
-                                        font.family: root.ff; font.pixelSize: 12; color: root.inkSoft
+                                        font.family: root.ff; font.pixelSize: 13; color: root.inkSoft
                                     }
                                     Text {
                                         text: root.wifiConnected
                                             ? WifiSecurityType.toString(root.wifiConnected.security)
                                             : ""
-                                        font.family: root.ff; font.pixelSize: 12; color: root.inkSoft
+                                        font.family: root.ff; font.pixelSize: 13; color: root.inkSoft
                                     }
                                 }
                             }
@@ -364,7 +364,7 @@ Item {
                             Text {
                                 anchors.centerIn: parent
                                 text: "Disconnect"
-                                font.family: root.ff; font.pixelSize: 12; font.letterSpacing: 2
+                                font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 2
                                 color: disconnectMA.containsMouse ? root.paper : root.inkSoft
                             }
                             MouseArea {
@@ -385,7 +385,7 @@ Item {
                             anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
                             verticalAlignment: Text.AlignVCenter
                             text: root.wifiError
-                            font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 1; color: root.accent
+                            font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 1; color: root.accent
                             elide: Text.ElideRight
                         }
                         MouseArea { anchors.fill: parent; onClicked: root.wifiError = "" }
@@ -404,7 +404,7 @@ Item {
                                 spacing: 6
                                 Text {
                                     text: "Password for  " + root.targetSsid
-                                    font.family: root.ff; font.pixelSize: 12; font.letterSpacing: 1; color: root.inkStrong
+                                    font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 1; color: root.inkStrong
                                 }
                                 Row {
                                     spacing: 6
@@ -415,7 +415,7 @@ Item {
                                         TextInput {
                                             id: pwInput
                                             anchors { fill: parent; margins: 6 }
-                                            font.family: root.ff; font.pixelSize: 13; color: root.inkStrong
+                                            font.family: root.ff; font.pixelSize: 14; color: root.inkStrong
                                             echoMode: TextInput.Password
                                             focus: root.showPassword
                                             onAccepted: { root.doConnectWithPassword(text); text = "" }
@@ -429,7 +429,7 @@ Item {
                                         Text {
                                             anchors.centerIn: parent
                                             text: "OK"
-                                            font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 1; font.weight: Font.Bold
+                                            font.family: root.ff; font.pixelSize: 12; font.letterSpacing: 1; font.weight: Font.Bold
                                             color: pwBtnMa.containsMouse ? root.paper : root.ink
                                         }
                                         MouseArea {
@@ -446,7 +446,7 @@ Item {
                                         Text {
                                             anchors.centerIn: parent
                                             text: "×"
-                                            font.family: root.ff; font.pixelSize: 14; color: pwCancelMA.containsMouse ? root.paper : root.accent
+                                            font.family: root.ff; font.pixelSize: 15; color: pwCancelMA.containsMouse ? root.paper : root.accent
                                         }
                                         MouseArea {
                                             id: pwCancelMA
@@ -468,7 +468,7 @@ Item {
                             text: root.wifiConnected
                                 ? "Available Networks"
                                 : (root.wifiPower ? "Networks" : "WiFi is OFF")
-                            font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 2; color: root.inkSoft
+                            font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 2; color: root.inkSoft
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Item { width: Math.max(0, parent.width - 180); height: 1 }
@@ -482,7 +482,7 @@ Item {
                             Text {
                                 anchors.centerIn: parent
                                 text: "Scan"
-                                font.family: root.ff; font.pixelSize: 9; font.letterSpacing: 1
+                                font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 1
                                 color: scanMA.containsMouse ? root.paper : root.inkSoft
                             }
                             MouseArea {
@@ -550,13 +550,13 @@ Item {
                                     spacing: 1
                                     Text {
                                         text: modelData.name || ""
-                                        font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 1; font.weight: Font.Medium
+                                        font.family: root.ff; font.pixelSize: 14; font.letterSpacing: 1; font.weight: Font.Medium
                                         color: root.inkStrong; elide: Text.ElideRight
                                         width: parent.width
                                     }
                                     Text {
                                         text: secLabel
-                                        font.family: root.ff; font.pixelSize: 10; color: root.inkSoft
+                                        font.family: root.ff; font.pixelSize: 11; color: root.inkSoft
                                         visible: secLabel !== ""
                                     }
                                 }
@@ -571,7 +571,7 @@ Item {
                                     Text {
                                         anchors.centerIn: parent
                                         text: isConnected ? "Connected" : (isConnecting ? "..." : "Connect")
-                                        font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 1
+                                        font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 1
                                         color: isConnected || isConnecting || wfMA.containsMouse ? root.paper : root.inkSoft
                                     }
                                 }
@@ -600,7 +600,7 @@ Item {
                             visible: root.wifiDevice && root.wifiPower && root.wifiDevice.networks.values.length === 0 && !root.wifiLoading
                             anchors { top: parent.top; topMargin: 30; horizontalCenter: parent.horizontalCenter }
                             text: "No networks found"
-                            font.family: root.ff; font.pixelSize: 12; color: root.inkSoft; opacity: 0.6
+                            font.family: root.ff; font.pixelSize: 13; color: root.inkSoft; opacity: 0.6
                         }
                     }
                 }
@@ -625,7 +625,7 @@ Item {
                             Text {
                                 anchors.centerIn: parent
                                 text: "BT blocked by rfkill.  Run: rfkill unblock bluetooth"
-                                font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 1; color: root.accent
+                                font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 1; color: root.accent
                             }
                         }
 
@@ -640,10 +640,10 @@ Item {
                                 Behavior on color { ColorAnimation { duration: 200 } }
                                 Row {
                                     anchors.centerIn: parent; spacing: 6
-                                    Text { text: "BT"; font.family: root.ff; font.pixelSize: 12; font.letterSpacing: 2; font.weight: Font.Bold; color: root.btPower ? root.paper : root.inkSoft }
+                                    Text { text: "BT"; font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 2; font.weight: Font.Bold; color: root.btPower ? root.paper : root.inkSoft }
                                     Text {
                                         text: BluetoothAdapterState.toString(root.btAdp ? root.btAdp.state : BluetoothAdapterState.Disabled)
-                                        font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 1
+                                        font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 1
                                         color: root.btBlocked ? root.accent : (root.btPower ? root.paper : root.inkSoft)
                                     }
                                 }
@@ -660,7 +660,7 @@ Item {
                                 Behavior on color { ColorAnimation { duration: 200 } }
                                 Row {
                                     anchors.centerIn: parent; spacing: 6
-                                    Text { text: "Scan"; font.family: root.ff; font.pixelSize: 12; font.letterSpacing: 2; font.weight: Font.Bold; color: root.btDiscovering ? root.paper : root.inkSoft }
+                                    Text { text: "Scan"; font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 2; font.weight: Font.Bold; color: root.btDiscovering ? root.paper : root.inkSoft }
                                     Rectangle {
                                         anchors.verticalCenter: parent.verticalCenter
                                         width: 6; height: 6; radius: 3
@@ -683,7 +683,7 @@ Item {
 
                         Text {
                             text: "Connected"
-                            font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 2; color: root.inkSoft
+                            font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 2; color: root.inkSoft
                             height: 20
                             visible: root.btConnectedCount > 0
                         }
@@ -701,20 +701,20 @@ Item {
                                 Row {
                                     anchors { fill: parent; leftMargin: 6; rightMargin: 4 }
                                     spacing: 6
-                                    Text { anchors.verticalCenter: parent.verticalCenter; text: "▪"; font.family: root.ff; font.pixelSize: 12; color: root.green }
+                                    Text { anchors.verticalCenter: parent.verticalCenter; text: "▪"; font.family: root.ff; font.pixelSize: 13; color: root.green }
                                     Column {
                                         anchors.verticalCenter: parent.verticalCenter
                                         width: parent.width - 14 - 6 - 70
                                         spacing: 1
                                         Text {
                                             text: modelData ? (modelData.name || modelData.address) : ""
-                                            font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 1; font.weight: Font.Medium
+                                            font.family: root.ff; font.pixelSize: 14; font.letterSpacing: 1; font.weight: Font.Medium
                                             color: root.inkStrong; elide: Text.ElideRight
                                             width: parent.width
                                         }
                                         Text {
                                             text: modelData && modelData.batteryAvailable ? Math.round(modelData.battery * 100) + "%" : ""
-                                            font.family: root.ff; font.pixelSize: 10; color: root.inkSoft
+                                            font.family: root.ff; font.pixelSize: 11; color: root.inkSoft
                                             visible: modelData && modelData.batteryAvailable
                                         }
                                     }
@@ -727,7 +727,7 @@ Item {
                                         Text {
                                             anchors.centerIn: parent
                                             text: "Disconnect"
-                                            font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 1
+                                            font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 1
                                             color: dcMA.containsMouse ? root.paper : root.accent
                                         }
                                         MouseArea {
@@ -742,7 +742,7 @@ Item {
 
                         Text {
                             text: "Devices"
-                            font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 2; color: root.inkSoft
+                            font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 2; color: root.inkSoft
                             height: 20
                         }
 
@@ -766,11 +766,11 @@ Item {
                                 Row {
                                     anchors { fill: parent; leftMargin: 8; rightMargin: 4 }
                                     spacing: 6
-                                    Text { anchors.verticalCenter: parent.verticalCenter; text: "▸"; font.family: root.ff; font.pixelSize: 10; color: root.inkSoft }
+                                    Text { anchors.verticalCenter: parent.verticalCenter; text: "▸"; font.family: root.ff; font.pixelSize: 11; color: root.inkSoft }
                                     Text {
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: modelData ? (modelData.name || modelData.address) : ""
-                                        font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 1
+                                        font.family: root.ff; font.pixelSize: 14; font.letterSpacing: 1
                                         color: root.inkStrong; elide: Text.ElideRight
                                         width: parent.width - 10 - 6 - 70
                                     }
@@ -783,7 +783,7 @@ Item {
                                         Text {
                                             anchors.centerIn: parent
                                             text: modelData ? (modelData.paired ? "Connect" : "Pair") : ""
-                                            font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 1
+                                            font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 1
                                             color: btMA.containsMouse ? root.paper : root.inkSoft
                                         }
                                     }
@@ -803,7 +803,7 @@ Item {
                                 anchors { top: parent.top; topMargin: 20; horizontalCenter: parent.horizontalCenter }
                                 text: root.btBlocked ? "Unblock rfkill first."
                                     : (root.btPower ? (root.btDiscovering ? "Scanning..." : "No available devices") : "BT is OFF")
-                                font.family: root.ff; font.pixelSize: 12; color: root.inkSoft; opacity: 0.6
+                                font.family: root.ff; font.pixelSize: 13; color: root.inkSoft; opacity: 0.6
                             }
                         }
                     }
@@ -818,10 +818,10 @@ Item {
                 Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: root.lineSoft }
                 Row {
                     anchors.centerIn: parent; spacing: 8
-                    Text { text: "◇"; font.family: root.ff; font.pixelSize: 10; color: root.inkSoft; anchors.verticalCenter: parent.verticalCenter }
+                    Text { text: "◇"; font.family: root.ff; font.pixelSize: 11; color: root.inkSoft; anchors.verticalCenter: parent.verticalCenter }
                     Text {
                         text: root.currentTab === "wifi" ? "WiFi · Native API" : "BT · BlueZ reactive"
-                        font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 1.5; color: root.inkSoft; opacity: 0.5
+                        font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 1.5; color: root.inkSoft; opacity: 0.5
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }

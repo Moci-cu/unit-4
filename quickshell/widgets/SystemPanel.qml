@@ -114,15 +114,15 @@ Item {
                     anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: 18; rightMargin: 18 }
                     Row {
                         spacing: 8; anchors.verticalCenter: parent.verticalCenter
-                        Text { text: "◈"; font.family: root.ff; font.pixelSize: 11; color: root.accent; anchors.verticalCenter: parent.verticalCenter }
-                        Text { text: "SYSTEM"; font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 3; font.weight: Font.Medium; color: root.inkStrong; anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: "◈"; font.family: root.ff; font.pixelSize: 12; color: root.accent; anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: "SYSTEM"; font.family: root.ff; font.pixelSize: 12; font.letterSpacing: 3; font.weight: Font.Medium; color: root.inkStrong; anchors.verticalCenter: parent.verticalCenter }
                         Rectangle { width: 16; height: 1; color: root.inkSoft; anchors.verticalCenter: parent.verticalCenter }
-                        Text { text: "システム"; font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 2; color: root.inkSoft; anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: "システム"; font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 2; color: root.inkSoft; anchors.verticalCenter: parent.verticalCenter }
                     }
                     Item { width: parent.width - 280; height: 1 }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "×"; font.family: root.ff; font.pixelSize: 14; color: root.inkSoft
+                        text: "×"; font.family: root.ff; font.pixelSize: 15; color: root.inkSoft
                         MouseArea { anchors.fill: parent; anchors.margins: -6; onClicked: root.closePanel() }
                     }
                 }
@@ -152,12 +152,12 @@ Item {
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: root.battDischarging ? "Remaining" : "Until full"
-                                font.family: root.ff; font.pixelSize: 9; font.letterSpacing: 2; color: root.inkSoft
+                                font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 2; color: root.inkSoft
                             }
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: root.battDischarging ? root.fmtTime(root.battTimeRemaining) : root.fmtTime(root.battTimeToFull)
-                                font.family: root.ff; font.pixelSize: 22; font.weight: Font.Bold; color: root.inkStrong
+                                font.family: root.ff; font.pixelSize: 24; font.weight: Font.Bold; color: root.inkStrong
                             }
                         }
                     }
@@ -169,8 +169,8 @@ Item {
                         Row {
                             anchors { fill: parent; leftMargin: 14; rightMargin: 14 }
                             spacing: 12; anchors.verticalCenter: parent.verticalCenter
-                            Text { text: "■"; font.family: root.ff; font.pixelSize: 14; color: root.battCharging ? root.gold : root.ink; anchors.verticalCenter: parent.verticalCenter }
-                            Text { text: "Battery"; font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 2; color: root.inkSoft; anchors.verticalCenter: parent.verticalCenter }
+                            Text { text: "■"; font.family: root.ff; font.pixelSize: 15; color: root.battCharging ? root.gold : root.ink; anchors.verticalCenter: parent.verticalCenter }
+                            Text { text: "Battery"; font.family: root.ff; font.pixelSize: 12; font.letterSpacing: 2; color: root.inkSoft; anchors.verticalCenter: parent.verticalCenter }
 
                             Rectangle {
                                 anchors.verticalCenter: parent.verticalCenter
@@ -188,7 +188,7 @@ Item {
 
                             Text {
                                 text: root.battPct + "%"
-                                font.family: root.ff; font.pixelSize: 14; font.weight: Font.Bold
+                                font.family: root.ff; font.pixelSize: 15; font.weight: Font.Bold
                                 color: root.battCharging ? root.gold : root.inkStrong
                                 anchors.verticalCenter: parent.verticalCenter
                             }
@@ -205,15 +205,15 @@ Item {
 
                         Row {
                             width: parent.width; height: 24
-                            Text { text: "Uptime"; width: 90; font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 2; color: root.inkSoft }
-                            Text { text: root.upStr; font.family: root.ff; font.pixelSize: 14; font.weight: Font.Medium; color: root.ink; horizontalAlignment: Text.AlignRight; width: parent.width - 90 }
+                            Text { text: "Uptime"; width: 90; font.family: root.ff; font.pixelSize: 12; font.letterSpacing: 2; color: root.inkSoft }
+                            Text { text: root.upStr; font.family: root.ff; font.pixelSize: 15; font.weight: Font.Medium; color: root.ink; horizontalAlignment: Text.AlignRight; width: parent.width - 90 }
                         }
 
                         Row {
                             width: parent.width; height: 24
                             visible: root.battCapacity > 0
-                            Text { text: "Capacity"; width: 90; font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 2; color: root.inkSoft }
-                            Text { text: root.battEnergy.toFixed(1) + " / " + root.battCapacity.toFixed(1) + " Wh"; font.family: root.ff; font.pixelSize: 14; font.weight: Font.Medium; color: root.ink; horizontalAlignment: Text.AlignRight; width: parent.width - 90 }
+                            Text { text: "Capacity"; width: 90; font.family: root.ff; font.pixelSize: 12; font.letterSpacing: 2; color: root.inkSoft }
+                            Text { text: root.battEnergy.toFixed(1) + " / " + root.battCapacity.toFixed(1) + " Wh"; font.family: root.ff; font.pixelSize: 15; font.weight: Font.Medium; color: root.ink; horizontalAlignment: Text.AlignRight; width: parent.width - 90 }
                         }
                     }
 
@@ -222,7 +222,7 @@ Item {
                         visible: !root.battReady
                         width: parent.width
                         text: "No battery detected"
-                        font.family: root.ff; font.pixelSize: 12; color: root.inkSoft
+                        font.family: root.ff; font.pixelSize: 13; color: root.inkSoft
                         horizontalAlignment: Text.AlignHCenter
                     }
                 }
@@ -236,10 +236,10 @@ Item {
                 Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: root.lineSoft }
                 Row {
                     anchors.centerIn: parent; spacing: 8
-                    Text { text: "◇"; font.family: root.ff; font.pixelSize: 10; color: root.inkSoft; anchors.verticalCenter: parent.verticalCenter }
+                    Text { text: "◇"; font.family: root.ff; font.pixelSize: 11; color: root.inkSoft; anchors.verticalCenter: parent.verticalCenter }
                     Text {
                         text: "Uptime · Battery"
-                        font.family: root.ff; font.pixelSize: 10; font.letterSpacing: 1.5; color: root.inkSoft; opacity: 0.5
+                        font.family: root.ff; font.pixelSize: 11; font.letterSpacing: 1.5; color: root.inkSoft; opacity: 0.5
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
