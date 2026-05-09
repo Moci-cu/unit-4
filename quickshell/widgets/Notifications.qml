@@ -79,7 +79,7 @@ Scope {
             implicitWidth: notifRepeater.count > 0 ? (root.notifWidth + root.leftMargin + 40) : 1
             implicitHeight: notifRepeater.count > 0 ? modelData.height : 1
             color: "transparent"
-            visible: true
+            visible: notifRepeater.count > 0
 
             // ═══════════════════════════════════════════════════════════
             // MASQUE D'INPUT : ne capture les clics QUE dans la zone

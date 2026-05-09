@@ -103,7 +103,7 @@ ShellRoot {
 
             margins.top: revealed ? (modelData.height - implicitHeight) / 2 : -100
 
-            visible: true
+            visible: panel.revealed
 
             Timer {
                 id: hideTimer
