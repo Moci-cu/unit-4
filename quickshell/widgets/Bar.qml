@@ -42,14 +42,31 @@ Item {
 
     readonly property var wsProps: {
         var hasApp = {}
+        var topClass = {}
+        var icons = {}
         var vals = Hyprland.toplevels.values
         for (var i = 0; i < vals.length; i++) {
             var t = vals[i]
             if (t && t.workspace) {
-                hasApp[t.workspace.id] = true
+                var wid = t.workspace.id
+                hasApp[wid] = true
+                if (!topClass[wid]) {
+                    var cls = (t.lastIpcObject?.initialClass || t.lastIpcObject?.class || "").toLowerCase()
+                    topClass[wid] = (cls[0] || "?").toUpperCase()
+                    var icon = "·"
+                    if (/terminal|kitty|alacritty/.test(cls))               icon = "⌥"
+                    else if (/code|nvim|vim|helix|editor|cursor/.test(cls)) icon = "▸"
+                    else if (/firefox|zen|chromium|browser/.test(cls))      icon = "⬡"
+                    else if (/file|yazi|ranger/.test(cls))                  icon = "▤"
+                    else if (/spotify|music|audio|mpv/.test(cls))           icon = "♪"
+                    else if (/discord|telegram|chat|signal/.test(cls))      icon = "◇"
+                    else if (/btop|htop|monitor|system/.test(cls))          icon = "▲"
+                    else if (/game|steam|lutris/.test(cls))                 icon = "○"
+                    icons[wid] = icon
+                }
             }
         }
-        return { hasApp: hasApp }
+        return { hasApp: hasApp, topClass: topClass, icons: icons }
     }
 
     // Event-driven: refresh toplevels only when windows change
@@ -266,7 +283,7 @@ Item {
                                         anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter
                                                   horizontalCenterOffset: isApp ? -1 : 0
                                                   verticalCenterOffset: isApp ? 0 : -2 }
-                                        text: parent.isActive ? "◆" : (isApp ? "!" : "◈")
+                                        text: parent.isActive ? "◆" : (isApp ? (root.wsProps.icons[wsId] || "·") : "◈")
                                         font.family: "Ndot 57"; font.pixelSize: isApp ? 14 : 13; font.weight: isApp ? Font.Bold : Font.Normal
                                         color: parent.isActive ? root.paper : (isApp ? root.accent : root.ink)
                                     }
