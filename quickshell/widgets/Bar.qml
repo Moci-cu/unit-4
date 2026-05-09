@@ -264,6 +264,7 @@ Item {
                                     Text {
                                         readonly property bool isApp: root.wsProps.hasApp[wsId] && !parent.isActive
                                         anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter
+                                                  horizontalCenterOffset: isApp ? -1 : 0
                                                   verticalCenterOffset: isApp ? 0 : -2 }
                                         text: parent.isActive ? "◆" : (isApp ? "!" : "◈")
                                         font.family: "Ndot 57"; font.pixelSize: isApp ? 14 : 13; font.weight: isApp ? Font.Bold : Font.Normal
