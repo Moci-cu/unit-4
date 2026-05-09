@@ -6,7 +6,6 @@ import Quickshell.Wayland
 import Quickshell.Io
 import Quickshell.Services.UPower
 import Quickshell.Networking
-import Qt5Compat.GraphicalEffects
 import "../theme"
 
 pragma ComponentBehavior: Bound
@@ -52,9 +51,13 @@ Item {
                 hasApp[wid] = true
                 if (!icons[wid]) {
                     var cls = (t.lastIpcObject?.initialClass || t.lastIpcObject?.class || "")
+                    var path = ""
                     var entry = DesktopEntries.byId(cls) || DesktopEntries.heuristicLookup(cls)
-                    var path = entry && entry.icon ? Quickshell.iconPath(entry.icon, "") : ""
-                    icons[wid] = path
+                    if (entry && entry.icon) path = Quickshell.iconPath(entry.icon, "")
+                    if (!path) path = Quickshell.iconPath(cls, "")
+                    if (!path) path = Quickshell.iconPath(cls.toLowerCase(), "")
+                    if (!path && /\./.test(cls)) path = Quickshell.iconPath(cls.split('.').pop(), "")
+                    icons[wid] = path || Quickshell.iconPath("application-x-executable", "image-missing")
                 }
             }
         }
@@ -270,26 +273,14 @@ Item {
                                     color: isActive ? root.ink : "transparent"
                                     border.color: root.inkSoft; border.width: 1
 
-                                    Item {
+                                    Image {
                                         readonly property bool isApp: (root.wsProps.hasApp[wsId] || false) && !parent.isActive
                                         anchors.centerIn: parent
-                                        width: 13; height: 13
-                                        visible: isApp && root.wsProps.icons[wsId] !== ""
-
-                                        Image {
-                                            id: appIcon
-                                            anchors.fill: parent
-                                            source: root.wsProps.icons[wsId]
-                                            fillMode: Image.PreserveAspectFit
-                                            smooth: true
-                                            visible: false
-                                        }
-
-                                        ColorOverlay {
-                                            anchors.fill: parent
-                                            source: appIcon
-                                            color: root.accent
-                                        }
+                                        width: 14; height: 14
+                                        source: isApp ? root.wsProps.icons[wsId] : ""
+                                        visible: isApp && source != ""
+                                        fillMode: Image.PreserveAspectFit
+                                        smooth: true
                                     }
 
                                     Text {
