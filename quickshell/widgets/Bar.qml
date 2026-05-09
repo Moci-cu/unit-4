@@ -54,7 +54,7 @@ Item {
                     var cls = (t.lastIpcObject?.initialClass || t.lastIpcObject?.class || "").toLowerCase()
                     topClass[wid] = (cls[0] || "?").toUpperCase()
                     var icon = "·"
-                    if (/terminal|kitty|alacritty/.test(cls))               icon = "⌥"
+                    if (/terminal|kitty|alacritty|ghostty/.test(cls))          icon = "⌥"
                     else if (/code|nvim|vim|helix|editor|cursor/.test(cls)) icon = "▸"
                     else if (/firefox|zen|chromium|browser/.test(cls))      icon = "⬡"
                     else if (/file|yazi|ranger/.test(cls))                  icon = "▤"
