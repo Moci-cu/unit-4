@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import Quickshell.Io
 import Quickshell.Services.UPower
 import Quickshell.Networking
+import Qt5Compat.GraphicalEffects
 import "../theme"
 
 pragma ComponentBehavior: Bound
@@ -42,7 +43,6 @@ Item {
 
     readonly property var wsProps: {
         var hasApp = {}
-        var topClass = {}
         var icons = {}
         var vals = Hyprland.toplevels.values
         for (var i = 0; i < vals.length; i++) {
@@ -50,23 +50,15 @@ Item {
             if (t && t.workspace) {
                 var wid = t.workspace.id
                 hasApp[wid] = true
-                if (!topClass[wid]) {
-                    var cls = (t.lastIpcObject?.initialClass || t.lastIpcObject?.class || "").toLowerCase()
-                    topClass[wid] = (cls[0] || "?").toUpperCase()
-                    var icon = "·"
-                    if (/terminal|kitty|alacritty|ghostty/.test(cls))          icon = "⌥"
-                    else if (/code|nvim|vim|helix|editor|cursor/.test(cls)) icon = "▸"
-                    else if (/firefox|zen|chromium|browser/.test(cls))      icon = "⬡"
-                    else if (/file|yazi|ranger/.test(cls))                  icon = "▤"
-                    else if (/spotify|music|audio|mpv/.test(cls))           icon = "♪"
-                    else if (/discord|telegram|chat|signal/.test(cls))      icon = "◇"
-                    else if (/btop|htop|monitor|system/.test(cls))          icon = "▲"
-                    else if (/game|steam|lutris/.test(cls))                 icon = "○"
-                    icons[wid] = icon
+                if (!icons[wid]) {
+                    var cls = (t.lastIpcObject?.initialClass || t.lastIpcObject?.class || "")
+                    var entry = DesktopEntries.byId(cls) || DesktopEntries.heuristicLookup(cls)
+                    var path = entry && entry.icon ? Quickshell.iconPath(entry.icon, "") : ""
+                    icons[wid] = path
                 }
             }
         }
-        return { hasApp: hasApp, topClass: topClass, icons: icons }
+        return { hasApp: hasApp, icons: icons }
     }
 
     // Event-driven: refresh toplevels only when windows change
@@ -278,14 +270,35 @@ Item {
                                     color: isActive ? root.ink : "transparent"
                                     border.color: root.inkSoft; border.width: 1
 
+                                    Item {
+                                        readonly property bool isApp: (root.wsProps.hasApp[wsId] || false) && !parent.isActive
+                                        anchors.centerIn: parent
+                                        width: 13; height: 13
+                                        visible: isApp && root.wsProps.icons[wsId] !== ""
+
+                                        Image {
+                                            id: appIcon
+                                            anchors.fill: parent
+                                            source: root.wsProps.icons[wsId]
+                                            fillMode: Image.PreserveAspectFit
+                                            smooth: true
+                                            visible: false
+                                        }
+
+                                        ColorOverlay {
+                                            anchors.fill: parent
+                                            source: appIcon
+                                            color: root.accent
+                                        }
+                                    }
+
                                     Text {
                                         readonly property bool isApp: (root.wsProps.hasApp[wsId] || false) && !parent.isActive
                                         anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter
-                                                  horizontalCenterOffset: isApp ? -1 : 0
-                                                  verticalCenterOffset: isApp ? 0 : -2 }
-                                        text: parent.isActive ? "◆" : (isApp ? (root.wsProps.icons[wsId] || "·") : "◈")
-                                        font.family: "Ndot 57"; font.pixelSize: isApp ? 14 : 13; font.weight: isApp ? Font.Bold : Font.Normal
-                                        color: parent.isActive ? root.paper : (isApp ? root.accent : root.ink)
+                                                  verticalCenterOffset: -2 }
+                                        text: parent.isActive ? "◆" : (isApp ? "" : "◈")
+                                        font.family: "Ndot 57"; font.pixelSize: 13
+                                        color: parent.isActive ? root.paper : root.ink
                                     }
 
                                     MouseArea {
