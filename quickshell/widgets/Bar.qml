@@ -263,7 +263,8 @@ Item {
 
                                     Text {
                                         readonly property bool isApp: root.wsProps.hasApp[wsId] && !parent.isActive
-                                        anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter; verticalCenterOffset: -2 }
+                                        anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter
+                                                  verticalCenterOffset: isApp ? 0 : -2 }
                                         text: parent.isActive ? "◆" : (isApp ? "!" : "◈")
                                         font.family: "Ndot 57"; font.pixelSize: isApp ? 14 : 13; font.weight: isApp ? Font.Bold : Font.Normal
                                         color: parent.isActive ? root.paper : (isApp ? root.accent : root.ink)
