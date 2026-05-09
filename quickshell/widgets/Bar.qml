@@ -262,7 +262,7 @@ Item {
                                     border.color: root.inkSoft; border.width: 1
 
                                     Text {
-                                        readonly property bool isApp: root.wsProps.hasApp[wsId] && !parent.isActive
+                                        readonly property bool isApp: (root.wsProps.hasApp[wsId] || false) && !parent.isActive
                                         anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter
                                                   horizontalCenterOffset: isApp ? -1 : 0
                                                   verticalCenterOffset: isApp ? 0 : -2 }
