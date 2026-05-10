@@ -306,7 +306,7 @@ Item {
         var f = Quickshell.env("HOME") + "/.config/quickshell/dark-mode.state"
         Quickshell.execDetached(["sh", "-c",
             'val=$(cat ' + f + ' 2>/dev/null); [ "$val" = "1" ] && echo 0 > ' + f + ' || echo 1 > ' + f +
-            '; systemctl --user restart quickshell-bar quickshell-network quickshell'])
+            '; systemctl --user restart quickshell'])
         root.closeMenu()
     }
 
