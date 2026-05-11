@@ -338,7 +338,6 @@ Item {
         desktopReader.running = true
         nightStateRead.running = true
         coffeeRead.running = true
-        tlpGetProc.running = true
     }
 
     Item {
@@ -787,6 +786,7 @@ text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
         glitchTimer.ox = panelHost.x; glitchTimer.step = 0; glitchTimer.start()
         panelHost.opacity = 1; panelHost.scale = 1
         scanAnim.start(); focusTimer.attempts = 0; focusTimer.restart()
+        tlpGetProc.running = true
     }
 
     function closeMenu() {
