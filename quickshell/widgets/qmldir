@@ -10,3 +10,4 @@ Bar 1.0 Bar.qml
 NetworkPanel 1.0 NetworkPanel.qml
 NetworkPopup 1.0 NetworkPopup.qml
 PolkitDialog 1.0 PolkitDialog.qml
+ControlCenter 1.0 ControlCenter.qml

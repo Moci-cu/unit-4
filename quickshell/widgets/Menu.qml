@@ -781,7 +781,7 @@ text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
         if (menuOpen) return
         menuOpen    = true; animRunning = true
         searchQuery = ""; effectiveQuery = ""; focusIdx = 0; currentCat = "all"; searchInput.text = ""
-        if (!appsLoaded) desktopReader.running = true
+        desktopReader.running = true
         panelHost.visible = true; panelHost.x = (root.screenW - root.lw) / 2
         glitchTimer.ox = panelHost.x; glitchTimer.step = 0; glitchTimer.start()
         panelHost.opacity = 1; panelHost.scale = 1
