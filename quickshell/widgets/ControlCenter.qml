@@ -103,7 +103,7 @@ ShellRoot {
         if (key === "top.bluetooth") {
             var acts2 = [{key:"toggle", label: btEnabled ? "Disable Bluetooth" : "Enable Bluetooth"}]
             if (btEnabled) {
-                acts2.push({key: "scan", label: btScanning ? "◉ Scanning… (tap to stop)" : "⌕ Scan for new devices"})
+                acts2.push({key: "scan", label: (root.btAdapter && root.btAdapter.discovering) ? "◉ Scanning… (tap to stop)" : "⌕ Scan for new devices"})
                 for (var j = 0; j < btDevices.length; j++) {
                     var d = btDevices[j]
                     var prefix = d.connected ? "✓ " : (d.paired ? "· " : "+ ")
@@ -313,8 +313,9 @@ ShellRoot {
         for (var i = 0; i < devs.length; i++) {
             var d = devs[i]
             if (d) result.push({
-                name: d.name || d.mac || "",
-                mac: d.mac || "",
+                device: d,
+                name: d.name || d.address || "",
+                mac: d.address || "",
                 connected: d.connected || false,
                 paired: d.paired || false
             })
@@ -325,6 +326,13 @@ ShellRoot {
             return a.name.localeCompare(b.name)
         })
         root.btDevices = result
+    }
+
+    function findBtDevice(mac) {
+        for (var i = 0; i < root.btDevices.length; i++) {
+            if (root.btDevices[i].mac === mac) return root.btDevices[i].device
+        }
+        return null
     }
     onBtEnabledChanged: { if (root.open && root.slot === "top") rebuildBt() }
 
@@ -758,32 +766,28 @@ ShellRoot {
                 return
             }
         }
-        // ── Bluetooth ──
+        // ── Bluetooth (native) ──
         else if (slotKey === "top" && subKey === "bluetooth") {
             if (actionKey === "toggle") {
                 if (root.btAdapter) root.btAdapter.enabled = !btEnabled; return
             } else if (actionKey === "scan") {
-                btScanning = !btScanning
-                if (btScanning) {
-                    btScanProc.running = true
-                    btScanStopTimer.restart()
-                } else {
-                    actProc.command = ["sh","-c","bluetoothctl --timeout 1 scan off"]
-                    actProc.running = true
+                if (root.btAdapter) root.btAdapter.discovering = !btScanning; return
+            }
+            var mac = ""
+            if (actionKey.indexOf("connect:") === 0) mac = actionKey.substring(8)
+            else if (actionKey.indexOf("disconnect:") === 0) mac = actionKey.substring(11)
+            else if (actionKey.indexOf("pair:") === 0) mac = actionKey.substring(5)
+            else if (actionKey.indexOf("remove:") === 0) mac = actionKey.substring(7)
+            if (mac) {
+                var d = root.findBtDevice(mac)
+                if (d) {
+                    if (actionKey.indexOf("connect:") === 0) d.connect()
+                    else if (actionKey.indexOf("disconnect:") === 0) d.disconnect()
+                    else if (actionKey.indexOf("pair:") === 0) d.pair()
+                    else if (actionKey.indexOf("remove:") === 0) d.forget()
+                    root.rebuildBt()
+                    return
                 }
-                return
-            } else if (actionKey.indexOf("connect:") === 0) {
-                var mac = actionKey.substring(8)
-                cmd = "bluetoothctl trust " + mac + " 2>/dev/null; bluetoothctl connect " + mac
-            } else if (actionKey.indexOf("disconnect:") === 0) {
-                var mac2 = actionKey.substring(11)
-                cmd = "bluetoothctl disconnect " + mac2
-            } else if (actionKey.indexOf("pair:") === 0) {
-                var mac3 = actionKey.substring(5)
-                cmd = "bluetoothctl pair " + mac3 + " && bluetoothctl trust " + mac3 + " && sleep 0.5 && bluetoothctl connect " + mac3
-            } else if (actionKey.indexOf("remove:") === 0) {
-                var mac4 = actionKey.substring(7)
-                cmd = "bluetoothctl disconnect " + mac4 + " 2>/dev/null; bluetoothctl remove " + mac4
             }
         }
         // ── Audio Output ──
