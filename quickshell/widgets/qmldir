@@ -11,3 +11,7 @@ NetworkPanel 1.0 NetworkPanel.qml
 NetworkPopup 1.0 NetworkPopup.qml
 PolkitDialog 1.0 PolkitDialog.qml
 ControlCenter 1.0 ControlCenter.qml
+LyricsService 1.0 LyricsService.qml
+LyricsPanel 1.0 LyricsPanel.qml
+LrclibLyrics 1.0 LrclibLyrics.qml
+GeniusLyrics 1.0 GeniusLyrics.qml

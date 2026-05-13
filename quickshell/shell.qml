@@ -77,6 +77,11 @@ ShellRoot {
         id: networkPanel
     }
 
+    // ── LYRICS ──
+    LyricsPanel {
+        id: lyricsPanel
+    }
+
     property string currentUser: Quickshell.env("USER") || "user"
 
     // ── IPC handlers ──
