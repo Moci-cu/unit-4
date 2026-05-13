@@ -13,13 +13,54 @@ Item {
         for (var i = 0; i < p.length; i++) {
             var t = p[i].trackTitle || ""
             var a = p[i].trackArtist || ""
-            if (t.length > 0 && t !== "Unknown Title" && a.length > 0 && a !== "Unknown Artist") {
-                console.log("[Lyrics] using player:", t, "—", a)
-                return p[i]
+            if (t.length > 0 && t !== "Unknown Title") return p[i]
+        }
+        // Fallback: try any player with identity (Termusic, etc.)
+        for (var j = 0; j < p.length; j++) {
+            if (p[j].identity || p[j].trackTitle) return p[j]
+        }
+        return null
+    }
+
+    // Fallback: extract artist/title from filename when MPRIS metadata is empty
+    readonly property string activeTitle: {
+        var t = root.activePlayer?.trackTitle ?? ""
+        if (t && t !== "Unknown Title") return t
+        return root.filenameTitle
+    }
+    readonly property string activeArtist: {
+        var a = root.activePlayer?.trackArtist ?? ""
+        if (a && a !== "Unknown Artist") return a
+        return root.filenameArtist
+    }
+
+    // Try to extract artist - title from filename via Process
+    property string filenameTitle: ""
+    property string filenameArtist: ""
+
+    Timer {
+        id: filenameExtract
+        interval: 500; repeat: false
+        running: root.activePlayer !== null && root.initialized
+        onTriggered: extractFilename.running = true
+    }
+    Process {
+        id: extractFilename
+        command: ["sh", "-c", "dbus-send --print-reply --dest=" + (root.activePlayer?.identity || "org.mpris.MediaPlayer2.termusic") + " /org/mpris/MediaPlayer2 org.freedesktop.DBus.Properties.Get string:'org.mpris.MediaPlayer2.Player' string:'Metadata' 2>/dev/null | grep 'xesam:url' -A2 | tail -1 | sed 's/.*string \"//' | sed 's/\"$//' | sed 's|file://||' | xargs -I{} basename '{}' .opus .m4a .mp3 .flac .wav .ogg .webm 2>/dev/null"]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var raw = this.text.trim()
+                if (!raw) return
+                var parts = raw.split(" - ")
+                if (parts.length >= 2) {
+                    root.filenameArtist = parts[0].trim()
+                    root.filenameTitle = parts.slice(1).join(" - ").trim()
+                } else {
+                    root.filenameTitle = raw
+                }
             }
         }
-        console.log("[Lyrics] no valid player found, total players:", p.length)
-        return null
     }
     readonly property string currentTrackId: root.activePlayer?.trackTitle ?? ""
 
@@ -45,9 +86,9 @@ Item {
 
     LrclibLyrics {
         id: lrclib
-        enabled: root.initialized && root.activePlayer?.trackTitle?.length > 0 && root.activePlayer?.trackArtist?.length > 0
-        title: root.activePlayer?.trackTitle ?? ""
-        artist: root.activePlayer?.trackArtist ?? ""
+        enabled: root.initialized && root.activeTitle?.length > 0 && root.activeArtist?.length > 0
+        title: root.activeTitle
+        artist: root.activeArtist
         duration: root.activePlayer?.length ?? 0
         position: root.activePlayer?.position ?? 0
     }
@@ -64,8 +105,8 @@ Item {
 
     onCurrentTrackIdChanged: {
         if (!root.initialized) return
-        if (currentTrackId !== "" && root.activePlayer?.trackArtist) {
-            genius.fetchLyrics(root.activePlayer.trackArtist, root.activePlayer.trackTitle)
+        if (activeArtist && activeTitle) {
+            genius.fetchLyrics(activeArtist, activeTitle)
         } else {
             genius.lyricsString = ""
         }

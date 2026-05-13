@@ -448,10 +448,9 @@ Item {
     }
 
     onEnabledChanged: {
-        if (root.enabled) {
-            console.log("[Lrclib] enabled — fetching:", root.queryTitle, "by", root.queryArtist)
+        if (root.enabled)
             fetchDebounce.restart();
-        } else {
+        else {
             root.loading = false;
             root.startPending = false;
         }
@@ -468,7 +467,6 @@ Item {
             onStreamFinished: {
                 const requestId = fetcher.requestId;
                 const requestKey = fetcher.requestKey;
-                console.log("[Lrclib] response:", text.length, "chars, requestKey match:", requestKey === root.fetchKey)
 
                 if (requestKey !== root.fetchKey) {
                     if (root.startPending) {
