@@ -23,19 +23,30 @@ ShellRoot {
     property string assetsDir:     xdgConfigHome + "/quickshell/assets"
     property string arrowPng:      "file://" + assetsDir + "/nier-arrow.png"
 
-    // ── Palette NieR ──
-    readonly property color colCard:     "#e8e0c8"
-    readonly property color colCardSoft: Qt.rgba(232/255, 224/255, 200/255, 0.4)
-    readonly property color colInk:      "#3a342a"
-    readonly property color colInkSoft:  "#6a604a"
-    readonly property color colHi:       "#1f1c16"
-    readonly property color colLight:    "#f5edd5"
+    // ── Dark mode ──
+    readonly property bool darkMode: dmText.trim() === "1"
+    FileView { id: dmFile; path: Quickshell.env("HOME") + "/.config/quickshell/dark-mode.state"; onLoaded: { dmText = text().trim() } }
+    Timer { interval: 200; running: true; repeat: false; onTriggered: dmFile.reload() }
+    property string dmText: "0"
+
+    // ── Palette NieR (dark mode responsive) ──
+    readonly property color colCard:     root.darkMode ? "#1a1814" : "#e8e0c8"
+    readonly property color colCardSoft: root.darkMode ? Qt.rgba(26/255, 24/255, 20/255, 0.4) : Qt.rgba(232/255, 224/255, 200/255, 0.4)
+    readonly property color colInk:      root.darkMode ? "#8a7530" : "#3a342a"
+    readonly property color colInkSoft:  root.darkMode ? "#7a7030" : "#6a604a"
+    readonly property color colHi:       root.darkMode ? "#0f0c07" : "#1f1c16"
+    readonly property color colLight:    root.darkMode ? "#2a2418" : "#f5edd5"
+    readonly property color colAccent:   root.darkMode ? "#a04040" : "#6e2a2a"
+
+    // ── Ndot font ──
+    FontLoader { id: ndotFont; source: "file://" + Quickshell.env("HOME") + "/.local/share/fonts/Ndot57-Regular.otf" }
+    readonly property string ff: ndotFont.name
 
     // ── Layout ──
-    readonly property int  slotGapV: 150
-    readonly property int  slotGapH: 350
-    readonly property int  panShiftV: 320   // vertical (top/bottom) : centre l'ensemble sub+settings
-    readonly property int  panShiftH: 700   // horizontal (left/right) : sub-menu traverse l'écran
+    readonly property int  slotGapV:  165
+    readonly property int  slotGapH:  385
+    readonly property int  panShiftV: 352
+    readonly property int  panShiftH: 770
 
     // ── État ──
     property bool   open:    false
@@ -1256,8 +1267,8 @@ ShellRoot {
                         // Header
                         Text {
                             text: "QSHARE"
-                            font.family: "Inter"
-                            font.pixelSize: 11
+                            font.family: root.ff
+                            font.pixelSize: 12
                             font.letterSpacing: 5
                             font.weight: Font.Medium
                             color: root.colInk
@@ -1271,8 +1282,8 @@ ShellRoot {
                         Text {
                             width: parent.width
                             text: root.qshareLabel
-                            font.family: "Inter"
-                            font.pixelSize: 12
+                            font.family: root.ff
+                            font.pixelSize: 13
                             font.weight: Font.Medium
                             color: root.colInk
                             elide: Text.ElideMiddle
@@ -1302,8 +1313,8 @@ ShellRoot {
                                     anchors.centerIn: parent
                                     visible: root.qshareQrPath === ""
                                     text: "GENERATING…"
-                                    font.family: "Inter"
-                                    font.pixelSize: 10
+                                    font.family: root.ff
+                                    font.pixelSize: 11
                                     font.letterSpacing: 3
                                     color: root.colCard
                                     opacity: 0.6
@@ -1315,8 +1326,8 @@ ShellRoot {
                         Text {
                             width: parent.width
                             text: root.qshareUrl
-                            font.family: "Iosevka, monospace"
-                            font.pixelSize: 9
+                            font.family: root.ff
+                            font.pixelSize: 10
                             color: root.colInk
                             opacity: 0.55
                             elide: Text.ElideMiddle
@@ -1329,8 +1340,8 @@ ShellRoot {
                             text: root.qshareLastTick !== ""
                                   ? "✓ " + root.qshareLastTick
                                   : "Scan with phone…"
-                            font.family: "Inter"
-                            font.pixelSize: 10
+                            font.family: root.ff
+                            font.pixelSize: 11
                             font.letterSpacing: 1.5
                             color: root.colInk
                             opacity: 0.7
@@ -1352,8 +1363,8 @@ ShellRoot {
                         Text {
                             anchors.centerIn: parent
                             text: root.qshareKeepAlive ? "× STOP" : "× CANCEL"
-                            font.family: "Inter"
-                            font.pixelSize: 10
+                            font.family: root.ff
+                            font.pixelSize: 11
                             font.letterSpacing: 2.5
                             font.weight: Font.Medium
                             color: cancelMA.containsMouse ? root.colCard : root.colInk
@@ -1603,7 +1614,7 @@ ShellRoot {
                     z: 4
                     Text {
                         text: sl.title
-                        font.family: "Inter"
+                        font.family: root.ff
                         font.pixelSize: sl.isCenter ? 15 : 13
                         font.weight: Font.Medium
                         font.letterSpacing: sl.isCenter ? 6 : 0.3
@@ -1613,7 +1624,7 @@ ShellRoot {
                     }
                     Text {
                         text: sl.subtitle
-                        font.family: "Inter"
+                        font.family: root.ff
                         font.pixelSize: sl.isCenter ? 9 : 10
                         color: root.colInkSoft
                         font.letterSpacing: sl.isCenter ? 1 : 0.2
@@ -1728,8 +1739,8 @@ ShellRoot {
                     property string targetText: root.detailH3().toUpperCase()
                     text: targetText
                     onTargetTextChanged: scrambleH3.start()
-                    font.family: "Inter"
-                    font.pixelSize: 11
+                    font.family: root.ff
+                    font.pixelSize: 12
                     font.letterSpacing: 5
                     font.weight: Font.Medium
                     color: root.colInk
@@ -1771,8 +1782,8 @@ ShellRoot {
                         property string targetText: root.detailStatus()
                         text: targetText
                         onTargetTextChanged: scrambleStatus.start()
-                        font.family: "Inter"
-                        font.pixelSize: 12
+                        font.family: root.ff
+                        font.pixelSize: 13
                         color: root.colInk
                         anchors.verticalCenter: parent.verticalCenter
                         // largeur max : panneau total - dot - margin
@@ -1809,8 +1820,8 @@ ShellRoot {
                         anchors.centerIn: parent
                         visible: actListContainer.isNotifList && actListContainer.actCount === 0
                         text: "No notifications"
-                        font.family: "Inter"
-                        font.pixelSize: 11
+                        font.family: root.ff
+                        font.pixelSize: 12
                         color: root.colInkSoft
                         font.letterSpacing: 1
                     }
@@ -1909,8 +1920,8 @@ ShellRoot {
                         Text {
                             anchors.centerIn: parent
                             text: "× CLEAR ALL"
-                            font.family: "Inter"
-                            font.pixelSize: 11
+                            font.family: root.ff
+                            font.pixelSize: 12
                             font.letterSpacing: 2.5
                             font.weight: Font.Medium
                             color: clearAllMA.containsMouse ? root.colCard : root.colInk
@@ -2038,8 +2049,8 @@ ShellRoot {
                         // Indication mute clickable
                         Text {
                             text: root.audioMuted ? "Muted · Click track to unmute" : "Right-click track to mute · Scroll to adjust"
-                            font.family: "Inter"
-                            font.pixelSize: 9
+                            font.family: root.ff
+                            font.pixelSize: 10
                             color: root.colInk
                             opacity: 0.5
                             font.letterSpacing: 1
@@ -2064,8 +2075,8 @@ ShellRoot {
 
                         Text {
                             text: "PASSWORD · " + root.wifiPromptSSID
-                            font.family: "Inter"
-                            font.pixelSize: 10
+                            font.family: root.ff
+                            font.pixelSize: 11
                             font.letterSpacing: 3
                             font.weight: Font.Medium
                             color: root.colInk
@@ -2086,8 +2097,8 @@ ShellRoot {
                                 anchors.rightMargin: 10
                                 verticalAlignment: TextInput.AlignVCenter
                                 color: root.colInk
-                                font.family: "Inter"
-                                font.pixelSize: 13
+                                font.family: root.ff
+                                font.pixelSize: 14
                                 echoMode: TextInput.Password
                                 clip: true
                                 activeFocusOnTab: true
@@ -2130,8 +2141,8 @@ ShellRoot {
                         Text {
                             visible: root.wifiError !== ""
                             text: root.wifiError
-                            font.family: "Inter"
-                            font.pixelSize: 10
+                            font.family: root.ff
+                            font.pixelSize: 11
                             color: "#a04030"
                         }
 
@@ -2144,8 +2155,8 @@ ShellRoot {
                                 Text {
                                     anchors.centerIn: parent
                                     text: "CONNECT"
-                                    font.family: "Inter"
-                                    font.pixelSize: 10
+                                    font.family: root.ff
+                                    font.pixelSize: 11
                                     font.letterSpacing: 2
                                     font.weight: Font.Medium
                                     color: root.colCard
@@ -2163,8 +2174,8 @@ ShellRoot {
                                 Text {
                                     anchors.centerIn: parent
                                     text: "CANCEL"
-                                    font.family: "Inter"
-                                    font.pixelSize: 10
+                                    font.family: root.ff
+                                    font.pixelSize: 11
                                     font.letterSpacing: 2
                                     font.weight: Font.Medium
                                     color: root.colInk
@@ -2267,8 +2278,8 @@ ShellRoot {
             text: targetText
             onTargetTextChanged: subScramble.start()
             anchors.centerIn: parent
-            font.family: "Inter"
-            font.pixelSize: 13
+            font.family: root.ff
+            font.pixelSize: 14
             font.weight: Font.Medium
             color: root.colInk
             z: 2
@@ -2368,8 +2379,8 @@ ShellRoot {
             anchors.left: parent.left
             anchors.leftMargin: 22
             anchors.verticalCenter: parent.verticalCenter
-            font.family: "Inter"
-            font.pixelSize: 11
+            font.family: root.ff
+            font.pixelSize: 12
             font.weight: Font.Medium
             font.letterSpacing: 2.5
             color: btn.isFocus ? root.colCard : root.colInk
@@ -2470,7 +2481,7 @@ ShellRoot {
                 anchors.top: parent.top
                 anchors.left: parent.left
                 text: nbtn.notifData.app ? nbtn.notifData.app.toUpperCase() : ""
-                font.family: "Inter"
+                font.family: root.ff
                 font.pixelSize: 8
                 font.letterSpacing: 1.5
                 color: nbtn.isFocus ? root.colCard : root.colInk
@@ -2486,8 +2497,8 @@ ShellRoot {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 text: nbtn.notifData.label
-                font.family: "Inter"
-                font.pixelSize: 11
+                font.family: root.ff
+                font.pixelSize: 12
                 font.weight: Font.Medium
                 color: nbtn.isFocus ? root.colCard : root.colInk
                 elide: Text.ElideRight
@@ -2503,8 +2514,8 @@ ShellRoot {
                 anchors.right: parent.right
                 visible: nbtn.expanded && text !== ""
                 text: nbtn.notifData.body
-                font.family: "Inter"
-                font.pixelSize: 10
+                font.family: root.ff
+                font.pixelSize: 11
                 color: nbtn.isFocus ? root.colCard : root.colInk
                 opacity: 0.85
                 wrapMode: Text.WordWrap
@@ -2531,7 +2542,7 @@ ShellRoot {
                     }
                     return bits.join(" · ")
                 }
-                font.family: "Inter"
+                font.family: root.ff
                 font.pixelSize: 8
                 font.letterSpacing: 1
                 color: nbtn.isFocus ? root.colCard : root.colInk
@@ -2551,8 +2562,8 @@ ShellRoot {
             Text {
                 anchors.centerIn: parent
                 text: nbtn.expanded ? "▾" : "▸"
-                font.family: "Inter"
-                font.pixelSize: 12
+                font.family: root.ff
+                font.pixelSize: 13
                 color: nbtn.isFocus ? root.colCard : root.colInk
                 opacity: 0.8
             }
