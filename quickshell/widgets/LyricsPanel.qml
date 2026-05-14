@@ -92,48 +92,44 @@ Item {
                         visible: lyricsService.hasSyncedLines
                         clip: true
 
-                        Flickable {
+                        ListView {
+                            id: lyricsList
                             anchors.fill: parent
-                            contentWidth: parent.width
-                            contentHeight: lyricsColumn.implicitHeight
+                            model: lyricsService.syncedLines
+                            spacing: 10
+                            currentIndex: lyricsService.currentIndex
+                            preferredHighlightBegin: height * 0.35
+                            preferredHighlightEnd: height * 0.65
+                            highlightRangeMode: ListView.ApplyRange
+                            highlightMoveDuration: 400
                             boundsBehavior: Flickable.StopAtBounds
 
-                            Column {
-                                id: lyricsColumn
-                                width: parent.width
-                                spacing: 10
+                            delegate: Item {
+                                required property int index
+                                required property var modelData
+                                property bool isCurrent: index === lyricsService.currentIndex
+                                width: lyricsList.width - 40
+                                height: lineTxt.implicitHeight + (isCurrent ? 12 : 0)
+                                anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
 
-                                Repeater {
-                                    model: lyricsService.syncedLines.length > 0 ? lyricsService.syncedLines.length : 0
-
-                                    delegate: Item {
-                                        required property int index
-                                        property int lineIdx: index
-                                        property bool isCurrent: index === lyricsService.currentIndex
-                                        width: parent.width - 40
-                                        height: lineTxt.implicitHeight + (isCurrent ? 12 : 0)
-                                        anchors.horizontalCenter: parent.horizontalCenter
-
-                                        Text {
-                                            id: lineTxt
-                                            anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter }
-                                            text: lyricsService.syncedLines[lineIdx]?.text ?? ""
-                                            font.family: root.ff
-                                            font.pixelSize: isCurrent ? 22 : 15
-                                            font.letterSpacing: isCurrent ? 2 : 1.5
-                                            font.weight: isCurrent ? Font.Bold : Font.Normal
-                                            color: root.ink
-                                            opacity: isCurrent ? 1.0 : (Math.abs(lineIdx - lyricsService.currentIndex) <= 2 ? 0.4 : 0.15)
-                                            horizontalAlignment: Text.AlignHCenter
-                                            wrapMode: Text.WordWrap
-                                            textFormat: Text.PlainText
-                                        }
-                                    }
+                                Text {
+                                    id: lineTxt
+                                    anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter }
+                                    text: modelData?.text ?? ""
+                                    font.family: root.ff
+                                    font.pixelSize: isCurrent ? 22 : 15
+                                    font.letterSpacing: isCurrent ? 2 : 1.5
+                                    font.weight: isCurrent ? Font.Bold : Font.Normal
+                                    color: root.ink
+                                    opacity: isCurrent ? 1.0 : (Math.abs(index - lyricsService.currentIndex) <= 2 ? 0.4 : 0.15)
+                                    horizontalAlignment: Text.AlignHCenter
+                                    wrapMode: Text.WordWrap
+                                    textFormat: Text.PlainText
                                 }
-
-                                // Bottom padding
-                                Item { width: 1; height: 100 }
                             }
+
+                            // Bottom padding
+                            footer: Item { width: 1; height: 100 }
                         }
                     }
 

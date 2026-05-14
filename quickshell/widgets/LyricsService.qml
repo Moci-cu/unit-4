@@ -77,8 +77,16 @@ Item {
     function init() { root.initialized = true }
 
     // https://quickshell.org/docs/master/types/Quickshell.Services.Mpris/MprisPlayer/#position
+    property bool _lastTimerRun: false
     Timer {
-        running: root.activePlayer?.playbackState == MprisPlaybackState.Playing && root.hasSyncedLines && root.initialized
+        running: {
+            var cond = root.activePlayer?.playbackState == MprisPlaybackState.Playing && root.hasSyncedLines && root.initialized
+            if (cond !== root._lastTimerRun) {
+                root._lastTimerRun = cond
+                console.log("[Lyrics] timer running:", cond, "state:", root.activePlayer?.playbackState, "hasLines:", root.hasSyncedLines)
+            }
+            return cond
+        }
         interval: 250
         repeat: true
         onTriggered: root.activePlayer.positionChanged()
