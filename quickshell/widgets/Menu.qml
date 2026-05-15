@@ -144,7 +144,7 @@ Item {
 
     Process {
         id: desktopReader
-        command: ["bash", Qt.resolvedUrl("../list-apps.sh").toString().replace("file://","")]
+        command: [Quickshell.env("HOME") + "/.config/quickshell/list-apps"]
         running: false
         stdout: StdioCollector {
             onStreamFinished: {
@@ -159,6 +159,7 @@ Item {
                     var desktopId = parts[1].trim()
                     var cats      = parts[2] || ""
                     var rawExec   = (parts[3] || "").replace(/%[A-Za-z]/g,"").trim()
+                    var keywords  = (parts[4] || "").trim()
                     if (!name || !desktopId) continue
                     var launchCmd = rawExec || desktopId
 
@@ -196,7 +197,8 @@ Item {
                         meta:      desktopId,
                         desktopId: launchCmd,
                         cmd:       launchCmd,
-                        icon:      ico
+                        icon:      ico,
+                        keywords:  keywords
                     })
                 }
                 root.apps = result
@@ -359,57 +361,10 @@ Item {
              color:  root.paper
              border.color: root.ink; border.width: 1
 
-            // GLSL glitch — GPU driven via Behavior on time
-            // Glitch — NieR palette (Timer-based, chroma overlays)
-            Rectangle { id: chromaR; anchors.fill: parent; color: root.accent; opacity: 0; z: 100 }
-            Rectangle { id: chromaC; x: 4; y: 2; width: parent.width; height: parent.height; color: root.ink; opacity: 0; z: 100 }
-            Rectangle { id: chromaB; y: 0; width: parent.width; height: 4; color: root.paper; opacity: 0; z: 101 }
-
-            Timer {
-                id: glitchTimer
-                interval: 40; running: false; repeat: true
-                property int step: 0
-                property real ox: 0
-                onTriggered: {
-                    step++
-                    if (step === 1) { chromaR.opacity = 0.35; chromaC.opacity = 0.25; panelHost.x = ox + 8
-                    } else if (step === 2) { panelHost.x = ox - 10; chromaR.opacity = 0.15; chromaC.opacity = 0.35
-                    } else if (step === 3) { panelHost.x = ox + 4; chromaR.opacity = 0; chromaC.opacity = 0; chromaB.opacity = 0.6; chromaB.y = root.lh * 0.3
-                    } else if (step === 4) { chromaB.opacity = 0; chromaR.opacity = 0.4; chromaC.opacity = 0
-                    } else if (step === 5) { chromaR.opacity = 0; panelHost.x = ox
-                    } else { panelHost.x = ox; chromaR.opacity = 0; chromaC.opacity = 0; chromaB.opacity = 0; step = 0; glitchTimer.stop() }
-                }
-            }
-
-            Repeater {
-                model: Math.floor(root.lw/20)+1
-                Rectangle { required property int index; x:index*20; y:0; width:1; height:root.lh; color:root.lineVsoft }
-            }
-            Repeater {
-                model: Math.floor(root.lh/20)+1
-                Rectangle { required property int index; x:0; y:index*20; width:root.lw; height:1; color:root.lineVsoft }
-            }
-
             MouseArea {
                 anchors.fill: parent; z: -1
                 onClicked: searchInput.forceActiveFocus()
                 propagateComposedEvents: true
-            }
-
-            Rectangle {
-                id: scanLine; x:0; width:root.lw; height:2; z:20; opacity:0
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                    GradientStop { position:0.0; color:"transparent" }
-                    GradientStop { position:0.5; color:root.accent }
-                    GradientStop { position:1.0; color:"transparent" }
-                }
-                NumberAnimation on y {
-                    id: scanAnim; from:0; to:root.lh; duration:700; running:false
-                    easing.type: Easing.Linear
-                    onStarted:  scanLine.opacity = 1
-                    onFinished: scanLine.opacity = 0
-                }
             }
 
             Item {
@@ -720,7 +675,7 @@ text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
                                 }
                                 Text {
                                     id:faLbl; anchors.centerIn:parent
-                                    text:modelData.l; font.family:root.ff; font.pixelSize:13; font.letterSpacing:2.5; font.weight:Font.Bold
+                                    text: modelData.cmd === "__dark__" ? (root.isDarkMode ? "LIGHT" : "DARK") : modelData.l; font.family:root.ff; font.pixelSize:13; font.letterSpacing:2.5; font.weight:Font.Bold
                                     color: {
                                         if (modelData.cmd === "__night__" && root.nightMode) return root.accent
                                         if (modelData.cmd === "__coffee__" && root.coffeeMode) return root.accent
@@ -783,17 +738,15 @@ text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
         searchQuery = ""; effectiveQuery = ""; focusIdx = 0; currentCat = "all"; searchInput.text = ""
         desktopReader.running = true
         panelHost.visible = true; panelHost.x = (root.screenW - root.lw) / 2
-        glitchTimer.ox = panelHost.x; glitchTimer.step = 0; glitchTimer.start()
         panelHost.opacity = 1; panelHost.scale = 1
-        scanAnim.start(); focusTimer.attempts = 0; focusTimer.restart()
+        focusTimer.attempts = 0; focusTimer.restart()
         tlpGetProc.running = true
     }
 
     function closeMenu() {
         if (!menuOpen) return
         menuOpen = false; animRunning = true
-        glitchTimer.stop(); glitchTimer.step = 0
-        chromaR.opacity = 0; chromaC.opacity = 0; chromaB.opacity = 0
+        
         panelHost.x = (root.screenW - root.lw) / 2
         panelHost.opacity = 0; panelHost.scale = 0.96
         hideDone.restart()

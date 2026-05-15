@@ -296,23 +296,6 @@ Scope {
             border.color: root.ink
             border.width: 1
 
-            // 2D grid (NieR style)
-            Canvas {
-                id: notifGrid
-                anchors.fill: parent
-                z: 0
-                onPaint: {
-                    const ctx = getContext("2d")
-                    ctx.strokeStyle = root.lineVsoft
-                    ctx.lineWidth = 1
-                    for (let x = 0; x < width; x += root.gridSize) {
-                        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke()
-                    }
-                    for (let y = 0; y < height; y += root.gridSize) {
-                        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke()
-                    }
-                }
-            }
 
             // Bordure gauche colorée
             Rectangle {

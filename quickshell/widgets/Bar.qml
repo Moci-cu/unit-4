@@ -1,11 +1,10 @@
 import QtQuick
 import Quickshell
-import Quickshell.Bluetooth
 import Quickshell.Hyprland
 import Quickshell.Wayland
 import Quickshell.Io
-import Quickshell.Services.UPower
 import Quickshell.Networking
+import Quickshell.Services.UPower
 import "../theme"
 
 pragma ComponentBehavior: Bound
@@ -15,158 +14,81 @@ Item {
 
     signal openPanel(string tab)
 
-    // ── Bar toggle ──
     property bool barVisible: true
     IpcHandler {
         target: "bar"
         function toggle(): void { root.barVisible = !root.barVisible }
     }
-
     GlobalShortcut {
         name: "barToggle"
         onPressed: { root.barVisible = !root.barVisible }
     }
 
-    readonly property color paper:     Theme.darkMode ? "#1a1814" : "#d6cfb5"
-    readonly property color ink:       Theme.darkMode ? "#8a7530" : "#463f2e"
-    readonly property color inkStrong: Theme.darkMode ? "#8a7530" : "#2e2a1f"
-    readonly property color inkSoft:   Theme.darkMode ? "#7a7030" : "#7a7358"
-    readonly property color lineVsoft: Theme.darkMode ? Qt.rgba(200/255,168/255,96/255,0.10) : Qt.rgba(70/255,63/255,46/255,0.12)
-    readonly property color lineSoft:  Theme.darkMode ? Qt.rgba(200/255,168/255,96/255,0.20) : Qt.rgba(70/255,63/255,46/255,0.25)
-    readonly property color accent:    Theme.darkMode ? "#a04040" : "#6e2a2a"
-    readonly property color inactiveBg: Theme.darkMode ? Qt.rgba(255/255,255/255,255/255,0.06) : Qt.rgba(70/255,63/255,46/255,0.22)
-    readonly property color chargingBg: "#5a7a5a"
+    readonly property color bg:        Qt.rgba(11/255, 10/255, 9/255, 0.92)
+    readonly property color inkDim:    Qt.rgba(200/255,184/255,154/255,0.4)
+    readonly property color sep:       Qt.rgba(200/255,184/255,154/255,0.08)
+    readonly property color borderBot: Qt.rgba(200/255,184/255,154/255,0.15)
+    readonly property color cpuColor:  "#c87060"
+    readonly property color memColor:  "#6090c8"
+    readonly property color netColor:  "#60a880"
+    readonly property color wsGold:    "#c8b89a"
+    readonly property color wsDim:     Qt.rgba(200/255,184/255,154/255,0.3)
+    readonly property color wsHover:   Qt.rgba(200/255,184/255,154/255,0.7)
+    readonly property color wsHoverBg: Qt.rgba(200/255,184/255,154/255,0.05)
+    readonly property color wsAppLine: Qt.rgba(200/255,184/255,154/255,0.5)
 
-    readonly property int barHeight: 40
-    readonly property int gridSize:  12
+    readonly property int barHeight: 28
+    readonly property int wsDotWidth: 28
 
-    readonly property var wsProps: {
-        var hasApp = {}
-        var icons = {}
-        var vals = Hyprland.toplevels.values
-        for (var i = 0; i < vals.length; i++) {
-            var t = vals[i]
-            if (t && t.workspace) {
-                var wid = t.workspace.id
-                hasApp[wid] = true
-                if (!icons[wid]) {
-                    var cls = (t.lastIpcObject?.initialClass || t.lastIpcObject?.class || "")
-                    var path = ""
-                    var entry = DesktopEntries.byId(cls) || DesktopEntries.heuristicLookup(cls)
-                    if (entry && entry.icon) path = Quickshell.iconPath(entry.icon, "")
-                    if (!path) path = Quickshell.iconPath(cls, "")
-                    if (!path) path = Quickshell.iconPath(cls.toLowerCase(), "")
-                    if (!path && /\./.test(cls)) path = Quickshell.iconPath(cls.split('.').pop(), "")
-                    icons[wid] = path || Quickshell.iconPath("application-x-executable", "image-missing")
-                }
-            }
-        }
-        return { hasApp: hasApp, icons: icons }
-    }
+    readonly property int focusedWs: Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1
+    property var wsWithApps: ({})
 
-    // Event-driven: refresh toplevels only when windows change
+    Component.onCompleted: refreshApps()
     Connections {
         target: Hyprland
+        function onFocusedWorkspaceChanged() { wsRefresh.start() }
         function onRawEvent(event) {
             var n = event?.name || ""
-            if (n === "openwindow" || n === "closewindow" || n === "movewindow" || n === "activewindow")
-                Hyprland.refreshToplevels()
+            if (n === "openwindow" || n === "closewindow" || n === "movewindow")
+                wsRefresh.start()
         }
+    }
+    Timer {
+        id: wsRefresh
+        interval: 0
+        repeat: false
+        onTriggered: refreshApps()
+    }
+    function refreshApps() {
+        Hyprland.refreshWorkspaces()
+        Hyprland.refreshToplevels()
+        var vals = Hyprland.toplevels.values || []
+        var set = {}
+        for (var i = 0; i < vals.length; i++) {
+            var t = vals[i]
+            if (t && t.workspace && t.workspace.id > 0) set[t.workspace.id] = true
+        }
+        root.wsWithApps = set
     }
 
     readonly property string activeTitle: {
         var at = Hyprland.activeToplevel
-        if (!at) return "---"
+        if (!at) return ""
         var cw = Hyprland.focusedWorkspace
-        if (!cw) return "---"
-        if (!at.workspace || at.workspace.id !== cw.id) return "---"
-        return at.title || "---"
+        if (!cw) return ""
+        if (!at.workspace || at.workspace.id !== cw.id) return ""
+        return at.title || ""
     }
 
-    readonly property bool showTitleFrame: {
-        var at = Hyprland.activeToplevel
-        if (!at) return false
-        var cw = Hyprland.focusedWorkspace
-        if (!cw) return false
-        return at.workspace && at.workspace.id === cw.id && at.title !== ""
-    }
-
-    property string cpuVal: "--%"
-    property string memVal: "--%"
-    readonly property var battery: UPower.displayDevice
-    readonly property string batVal: root.battery && root.battery.ready
-        ? Math.round(root.battery.percentage * 100) + "%" : "--"
-    readonly property string batPower: root.pwrSmoothed !== 0
-        ? (root.pwrSmoothed > 0 ? "+" : "") + Math.abs(root.pwrSmoothed).toFixed(1) + "W"
-        : (root.battery && root.battery.ready
-            ? (root.battery.changeRate > 0 ? "+" : "") + Math.abs(root.battery.changeRate).toFixed(1) + "W"
-            : "--")
-    readonly property bool   hasBattery: root.battery && root.battery.ready
-    readonly property string batStatus: root.battery && root.battery.ready
-        ? UPowerDeviceState.toString(root.battery.state) : "Unknown"
-    readonly property string currentTime: {
-        var h = sysClock.hours, m = sysClock.minutes
-        return ("0" + h).slice(-2) + ":" + ("0" + m).slice(-2)
-    }
-
-    // ── WiFi (native Quickshell.Networking, 0 fork) ──
-    readonly property string wifiSsid: {
-        var devs = Networking.devices.values
-        for (var i = 0; i < devs.length; i++) {
-            if (devs[i].type !== DeviceType.Wifi) continue
-            var nets = devs[i].networks.values
-            for (var j = 0; j < nets.length; j++) {
-                if (nets[j].state === 2) return nets[j].name
-            }
-        }
-        return ""
-    }
-
-    // ── BT (native Bluetooth, 0 fork) ──
-    readonly property bool btOn: Bluetooth.defaultAdapter
-        ? Bluetooth.defaultAdapter.enabled : false
-
-    readonly property bool btConn: {
-        var adp = Bluetooth.defaultAdapter
-        if (!adp || !adp.devices) return false
-        for (var i = 0; i < adp.devices.length; i++) {
-            if (adp.devices[i] && adp.devices[i].connected) return true
-        }
-        return false
-    }
-
-    // ── CPU Temperature (FileView, 0 fork) ──
+    property string cpuVal: "--"
+    property string memVal: "--"
     property string cpuTemp: "--"
     property int cpuTempNum: 0
-    Timer { interval: 5000; running: true; repeat: true; onTriggered: tempFile.reload() }
-    FileView {
-        id: tempFile
-        path: "/sys/class/hwmon/hwmon5/temp1_input"
-        onLoaded: { root.cpuTempNum = Math.round(parseInt(text().trim()) / 1000); root.cpuTemp = root.cpuTempNum + "°" }
-    }
-
-    // ── PWR from sysfs (current_now × voltage_now, 0 fork) ──
-    property real pwrSmoothed: 0
-    property int pwrVoltage: 1
-    Timer { interval: 5000; running: true; repeat: true; onTriggered: pwrCur.reload() }
-    FileView {
-        id: pwrCur
-        path: "/sys/class/power_supply/BAT0/current_now"
-        onLoaded: { var cur = parseInt(text().trim()) || 0; if (cur > 0 && root.pwrVoltage > 1000000) root.pwrSmoothed = -(cur * root.pwrVoltage) / 1e12 }
-    }
-    Timer { interval: 300; running: true; repeat: false; onTriggered: pwrVolt.reload() }
-    Connections { target: root.battery; enabled: root.battery !== null; function onStateChanged() { pwrVolt.reload() } }
-    FileView {
-        id: pwrVolt
-        path: "/sys/class/power_supply/BAT0/voltage_now"
-        onLoaded: { root.pwrVoltage = parseInt(text().trim()) || 1 }
-    }
-
-    property int lastCpuUsed:  0
+    property int lastCpuUsed: 0
     property int lastCpuTotal: 0
 
     Timer {
-        interval: 3000; running: true; repeat: true
+        interval: 5000; running: true; repeat: true
         onTriggered: { fileStat.reload(); fileMem.reload() }
     }
     FileView {
@@ -175,14 +97,13 @@ Item {
         onLoaded: {
             var p = text().trim().split(/\s+/)
             if (p.length < 5 || p[0] !== "cpu") return
-            var used  = parseInt(p[1]) + parseInt(p[2]) + parseInt(p[3])
+            var used = parseInt(p[1]) + parseInt(p[2]) + parseInt(p[3])
             var total = used + parseInt(p[4])
-            if (root.lastCpuTotal > 0 && total > root.lastCpuTotal) {
+            if (root.lastCpuTotal > 0 && total > root.lastCpuTotal)
                 root.cpuVal = Math.round(100 * (used - root.lastCpuUsed) / (total - root.lastCpuTotal)) + "%"
-            } else if (root.lastCpuTotal === 0) {
+            else if (root.lastCpuTotal === 0)
                 root.cpuVal = Math.round(100 * used / total) + "%"
-            }
-            root.lastCpuUsed  = used
+            root.lastCpuUsed = used
             root.lastCpuTotal = total
         }
     }
@@ -202,10 +123,47 @@ Item {
         }
     }
 
-    SystemClock {
-        id: sysClock
-        precision: SystemClock.Minutes
+    Timer { interval: 5000; running: true; repeat: true; onTriggered: tempFile.reload() }
+    FileView {
+        id: tempFile
+        path: "/sys/class/hwmon/hwmon5/temp1_input"
+        onLoaded: {
+            root.cpuTempNum = Math.round(parseInt(text().trim()) / 1000)
+            root.cpuTemp = "TEMP " + root.cpuTempNum + "°"
+        }
     }
+    Timer { interval: 30000; running: true; repeat: true; onTriggered: tempFile.reload() }
+
+    // ── Battery (UPower native, 0 fork) ──
+    readonly property var battery: UPower.displayDevice
+    readonly property bool hasBattery: root.battery && root.battery.isPresent && root.battery.percentage > 0
+    readonly property string batPercent: root.hasBattery ? Math.round(root.battery.percentage * 100) + "%" : ""
+    readonly property string batCharging: root.hasBattery && root.battery.state === UPowerDeviceState.Charging ? " +" : ""
+    readonly property string batPower: root.hasBattery ? Math.abs(root.battery.changeRate).toFixed(1) + "W" : ""
+    readonly property color batColor: root.hasBattery
+        ? (root.battery.state === UPowerDeviceState.Charging ? root.netColor : (parseInt(root.batPercent) < 15 ? "#c86060" : root.cpuColor))
+        : "transparent"
+
+
+    readonly property string wifiSsid: {
+        var devs = Networking.devices.values
+        for (var i = 0; i < devs.length; i++) {
+            if (devs[i].type !== DeviceType.Wifi) continue
+            var nets = devs[i].networks.values
+            for (var j = 0; j < nets.length; j++) {
+                if (nets[j].state === 2) return "NET " + nets[j].name
+            }
+        }
+        return "NET --"
+    }
+
+    SystemClock { id: sysClock; precision: SystemClock.Minutes }
+    readonly property string currentTime: {
+        var h = sysClock.hours, m = sysClock.minutes
+        return ("0" + h).slice(-2) + ":" + ("0" + m).slice(-2)
+    }
+
+    readonly property string tickerText: "接続中 // SCANNING // データ処理 // SYS:ACTIVE // NR-2B@ARCH // 全システム正常 // 起動完了 //"
 
     Variants {
         model: Quickshell.screens
@@ -222,243 +180,212 @@ Item {
             visible: root.barVisible
 
             Rectangle {
-                id: barBg
                 anchors.fill: parent
-                color: root.paper
-                border.color: root.ink
-                border.width: 2
+                color: root.bg
 
-                Canvas {
-                    id: barGrid
-                    anchors.fill: parent
-                    onPaint: {
-                        var ctx = getContext("2d")
-                        ctx.strokeStyle = root.lineVsoft
-                        ctx.lineWidth = 1
-                        for (var x = 0; x < width; x += root.gridSize) {
-                            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke()
-                        }
-                        for (var y = 0; y < height; y += root.gridSize) {
-                            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke()
-                        }
-                    }
+                Rectangle {
+                    anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+                    height: 1; color: root.borderBot
                 }
 
                 Row {
-                    id: wsRow
-                    anchors { top: parent.top; bottom: parent.bottom; topMargin: 4; bottomMargin: 4 }
-                    x: Math.max(leftInfo.x + leftInfo.width + 6, (barBg.width - wsRow.width) / 2)
-                    spacing: 0
+                    anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
 
-                    Rectangle {
-                        height: wsRow.height
-                        width: 10 * 23 + 9 * 5 + 11
-                        color: Theme.darkMode ? Qt.rgba(200/255,168/255,96/255,0.05) : root.inactiveBg
-                        border.color: root.inkStrong; border.width: 1
+                    Repeater {
+                        model: 10
+                        delegate: Rectangle {
+                            required property int index
+                            readonly property int wsId: index + 1
+                            readonly property bool isFocused: root.focusedWs === wsId
+                            readonly property bool hasApp: root.wsWithApps[wsId] || false
 
-                        Row {
-                            anchors { fill: parent; leftMargin: 5; rightMargin: 5 }
-                            spacing: 5
-                            Repeater {
-                                model: 10
-                                Rectangle {
-                                    required property int index
-                                    readonly property int wsId: index + 1
-                                    readonly property bool isActive: Hyprland.focusedWorkspace
-                                        ? Hyprland.focusedWorkspace.id === wsId
-                                        : false
+                            width: root.wsDotWidth
+                            height: parent.height
+                            color: ma.containsMouse ? root.wsHoverBg : "transparent"
 
-                                    width: 23; height: 20
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    color: isActive ? root.ink : "transparent"
-                                    border.color: root.inkSoft; border.width: 1
+                            Rectangle {
+                                anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+                                height: 2
+                                color: isFocused ? root.wsGold : "transparent"
+                            }
 
-                                    Image {
-                                        readonly property bool isApp: (root.wsProps.hasApp[wsId] || false) && !parent.isActive
-                                        anchors.centerIn: parent
-                                        width: 14; height: 14
-                                        source: isApp ? root.wsProps.icons[wsId] : ""
-                                        visible: isApp && source != ""
-                                        fillMode: Image.PreserveAspectFit
-                                        smooth: true
-                                    }
+                            Text {
+                                anchors.centerIn: parent
+                                text: wsId
+                                font.family: "Ndot 57"
+                                font.pixelSize: 14
+                                font.letterSpacing: 1
+                                color: isFocused ? root.wsGold : (hasApp ? root.wsGold : (ma.containsMouse ? root.wsHover : root.wsDim))
+                            }
 
-                                    Text {
-                                        readonly property bool isApp: (root.wsProps.hasApp[wsId] || false) && !parent.isActive
-                                        anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter
-                                                  verticalCenterOffset: -2 }
-                                        text: parent.isActive ? "◆" : (isApp ? "" : "◈")
-                                        font.family: "Ndot 57"; font.pixelSize: 13
-                                        color: parent.isActive ? root.paper : root.ink
-                                    }
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        onClicked: Hyprland.dispatch("workspace " + wsId)
-                                    }
-
-                                }
+                            MouseArea {
+                                id: ma
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                onClicked: Hyprland.dispatch("workspace " + wsId)
                             }
                         }
                     }
-                }
-
-                Row {
-                    id: leftInfo
-                    anchors { left: parent.left; top: parent.top; bottom: parent.bottom; leftMargin: 10; topMargin: 4; bottomMargin: 4 }
-                    spacing: 6
 
                     Text {
-                        font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; opacity:0.85
-                        color: root.showTitleFrame ? root.inkStrong : root.inkSoft
-                        text: root.activeTitle; elide: Text.ElideRight
-                        width: Math.min(implicitWidth, 200)
                         anchors.verticalCenter: parent.verticalCenter
+                        leftPadding: 12
+                        text: root.activeTitle ? "// " + root.activeTitle.substring(0, 40) : "---"
+                        font.family: "Ndot 57"
+                        font.pixelSize: 12
+                        font.letterSpacing: 1
+                        color: root.inkDim
                     }
-                    Item { width:1; height:1 }
-
-                    Item {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: btRow2.width; height: btRow2.height
-                        Row { id: btRow2; spacing: 6; anchors.verticalCenter: parent.verticalCenter
-                            Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; color:root.inkStrong; opacity:0.85; text:"BT"; anchors.verticalCenter:parent.verticalCenter }
-                            Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; opacity:0.8; text:root.btOn?(root.btConn?"ON":"--"):"OFF"; anchors.verticalCenter:parent.verticalCenter; color:root.btOn?(root.btConn?"#8a6a30":root.inkSoft):root.inkSoft }
-                        }
-                        MouseArea { anchors.fill:parent; anchors.margins:-4; onClicked: root.openPanel("bt") }
-                    }
-
-                    Item { width:1; height:1 }
-
-                    Item {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: wfRow2.width; height: wfRow2.height
-                        Row { id: wfRow2; spacing: 6; anchors.verticalCenter: parent.verticalCenter
-                            Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; color:root.inkStrong; opacity:0.85; text:"WF"; anchors.verticalCenter:parent.verticalCenter }
-                            Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; opacity:0.8; text:root.wifiSsid||"---"; elide:Text.ElideRight; anchors.verticalCenter:parent.verticalCenter; color:root.wifiSsid?"#8a6a30":root.inkSoft }
-                        }
-                        MouseArea { anchors.fill:parent; anchors.margins:-4; onClicked: root.openPanel("wifi") }
-                    }
-
-                    Item { width:1; height:1 }
-
-                    Text { font.family:"Ndot 57"; font.pixelSize:14; font.weight:Font.Bold; font.letterSpacing:1.2; color:root.inkStrong; opacity:0.85; text:root.currentTime; anchors.verticalCenter:parent.verticalCenter }
                 }
 
-                Item {
-                    id: titleFrame
+                Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.verticalCenter: parent.verticalCenter
-                    height: 26
-                    clip: true
-                    property real leftSide: leftInfo.x + leftInfo.width + 12
-                    property real rightSide: barBg.width - statsRow.x
-                    property real tightSide: Math.max(leftSide, rightSide)
-                    property real maxW: Math.max(barBg.width - 2 * tightSide, 0)
-                    width: Math.min(wsRow.width, maxW)
+                    text: root.tickerText
+                    font.family: "Ndot 57"
+                    font.pixelSize: 9
+                    font.letterSpacing: 2
+                    color: Qt.rgba(200/255,184/255,154/255,0.4)
+                    elide: Text.ElideRight
+                    width: Math.min(implicitWidth, parent.width - 520)
                 }
 
                 Row {
-                    id: statsRow
-                    anchors.right: parent.right
-                    anchors.rightMargin: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 9
+                    anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
 
-                    Text {
-                        font.family: "Ndot 57"
-                        font.pixelSize: 14
-                        font.weight: Font.Bold
-                        font.letterSpacing: 1.2
-                        color: root.inkStrong
-                        opacity: 0.85
-                        text: "CPU"
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-                    Text {
-                        font.family: "Ndot 57"
-                        font.pixelSize: 14
-                        font.weight: Font.Bold
-                        font.letterSpacing: 1.2
-                        opacity: 0.8
-                        color: parseFloat(root.cpuVal) > 12 ? "#6e2a2a" : (root.cpuVal !== "--%" ? root.inkSoft : root.lineSoft)
-                        text: root.cpuVal
-                        anchors.verticalCenter: parent.verticalCenter
+                    Item {
+                        width: tempLabel.width + 20
+                        height: parent.height
+                        Rectangle {
+                            anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                            width: 1
+                            color: root.sep
+                        }
+                        Text {
+                            id: tempLabel
+                            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                            text: root.cpuTemp || "TEMP --"
+                            font.family: "Ndot 57"
+                            font.pixelSize: 14
+                            font.letterSpacing: 1
+                            color: root.cpuTempNum > 53 ? "#c86060" : root.cpuColor
+                        }
                     }
 
-                    Item { width: 2; height: 1 }
-
-                    Text {
-                        font.family: "Ndot 57"
-                        font.pixelSize: 14
-                        font.weight: Font.Bold
-                        font.letterSpacing: 1.2
-                        color: root.inkStrong
-                        opacity: 0.85
-                        text: "MEM"
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-                    Text {
-                        font.family: "Ndot 57"
-                        font.pixelSize: 14
-                        font.weight: Font.Bold
-                        font.letterSpacing: 1.2
-                        opacity: 0.8
-                        color: root.memVal !== "--%" ? root.inkSoft : root.lineSoft
-                        text: root.memVal
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-
-                    Item { width: 2; height: 1 }
-
-                    Text {
-                        font.family: "Ndot 57"
-                        font.pixelSize: 14
-                        font.weight: Font.Bold
-                        font.letterSpacing: 1.2
-                        color: root.inkStrong
-                        opacity: 0.85
-                        text: "BAT"
-                        anchors.verticalCenter: parent.verticalCenter
+                    Item {
+                        width: batLabel.width + 20
+                        height: parent.height
                         visible: root.hasBattery
+                        Rectangle {
+                            anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                            width: 1
+                            color: root.sep
+                        }
+                        Text {
+                            id: batLabel
+                            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                            text: "BAT " + root.batPercent + root.batCharging
+                            font.family: "Ndot 57"
+                            font.pixelSize: 14
+                            font.letterSpacing: 1
+                            color: root.batColor
+                        }
                     }
-                    Text {
-                        font.family: "Ndot 57"
-                        font.pixelSize: 14
-                        font.weight: Font.Bold
-                        font.letterSpacing: 1.2
-                        opacity: 0.8
-                        color: root.hasBattery
-                            ? (root.batStatus === "Charging" ? "#60a880" : root.inkSoft)
-                            : "transparent"
-                        text: root.batVal
-                        anchors.verticalCenter: parent.verticalCenter
+
+                    Item {
+                        width: pwrLabel.width + 20
+                        height: parent.height
                         visible: root.hasBattery
+                        Rectangle {
+                            anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                            width: 1
+                            color: root.sep
+                        }
+                        Text {
+                            id: pwrLabel
+                            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                            text: "PWR " + root.batPower
+                            font.family: "Ndot 57"
+                            font.pixelSize: 14
+                            font.letterSpacing: 1
+                            color: root.cpuColor
+                        }
                     }
 
-                    Item { width: 2; height: 1 }
-
-                    Text {
-                        font.family: "Ndot 57"; font.pixelSize: 14; font.weight: Font.Bold; font.letterSpacing: 1.2
-                        color: root.inkStrong; opacity: 0.85; text: "PWR"; anchors.verticalCenter: parent.verticalCenter
-                        visible: root.hasBattery
+                    Item {
+                        width: cpuLabel.width + 20
+                        height: parent.height
+                        Rectangle {
+                            anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                            width: 1
+                            color: root.sep
+                        }
+                        Text {
+                            id: cpuLabel
+                            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                            text: "CPU " + root.cpuVal
+                            font.family: "Ndot 57"
+                            font.pixelSize: 14
+                            font.letterSpacing: 1
+                            color: parseFloat(root.cpuVal) > 12 ? "#c86060" : (root.cpuVal !== "--%" ? root.cpuColor : root.inkDim)
+                        }
                     }
-                    Text {
-                        font.family: "Ndot 57"; font.pixelSize: 14; font.weight: Font.Bold; font.letterSpacing: 1.2
-                        opacity: 0.8; text: root.batPower; anchors.verticalCenter: parent.verticalCenter
-                        color: Math.abs(parseFloat(root.batPower)) > 10 ? "#6e2a2a" : (root.batStatus === "Charging" ? "#60a880" : root.inkSoft)
-                        visible: root.hasBattery
+
+                    Item {
+                        width: memLabel.width + 20
+                        height: parent.height
+                        Rectangle {
+                            anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                            width: 1
+                            color: root.sep
+                        }
+                        Text {
+                            id: memLabel
+                            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                            text: "MEM " + root.memVal
+                            font.family: "Ndot 57"
+                            font.pixelSize: 14
+                            font.letterSpacing: 1
+                            color: root.memVal !== "--%" ? root.memColor : root.inkDim
+                        }
                     }
 
-                    Item { width: 2; height: 1 }
-
-                    Text {
-                        font.family: "Ndot 57"; font.pixelSize: 14; font.weight: Font.Bold; font.letterSpacing: 1.2
-                        color: root.inkStrong; opacity: 0.85; text: "TEMP"; anchors.verticalCenter: parent.verticalCenter
+                    Item {
+                        width: netLabel.width + 20
+                        height: parent.height
+                        Rectangle {
+                            anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                            width: 1
+                            color: root.sep
+                        }
+                        Text {
+                            id: netLabel
+                            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                            text: root.wifiSsid
+                            font.family: "Ndot 57"
+                            font.pixelSize: 14
+                            font.letterSpacing: 1
+                            color: root.netColor
+                        }
                     }
-                    Text {
-                        font.family: "Ndot 57"; font.pixelSize: 14; font.weight: Font.Bold; font.letterSpacing: 1.2
-                        opacity: 0.8; text: root.cpuTemp || "--"; anchors.verticalCenter: parent.verticalCenter
-                        color: root.cpuTempNum > 55 ? "#6e2a2a" : root.inkSoft
+
+                    Item {
+                        width: clockLabel.width + 20
+                        height: parent.height
+                        Rectangle {
+                            anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                            width: 1
+                            color: root.sep
+                        }
+                        Text {
+                            id: clockLabel
+                            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                            text: root.currentTime
+                            font.family: "Ndot 57"
+                            font.pixelSize: 14
+                            font.letterSpacing: 2
+                            color: "#c8b89a"
+                        }
                     }
                 }
             }

@@ -3,9 +3,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
-import Quickshell.Bluetooth
 import Quickshell.Services.UPower
-import Quickshell.Networking
 import Quickshell.Services.Polkit
 import QtQuick
 import "widgets"
@@ -15,6 +13,34 @@ import "theme"
 
 ShellRoot {
     id: root
+
+    // ── POLKIT ──
+    PolkitAgent {
+        id: polkitAgent
+    }
+
+    Variants {
+        model: Quickshell.screens
+        PanelWindow {
+            required property var modelData
+            screen: modelData
+            anchors.top: true; anchors.left: true; anchors.right: true; anchors.bottom: true
+            exclusionMode: ExclusionMode.Ignore
+            color: "transparent"
+            WlrLayershell.namespace: "quickshell:polkit"
+            WlrLayershell.keyboardFocus: polkitAgent.isActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            WlrLayershell.layer: WlrLayer.Overlay
+            implicitWidth: modelData.width
+            implicitHeight: modelData.height
+            visible: polkitAgent.isActive
+
+            PolkitDialog {
+                anchors.fill: parent
+            }
+        }
+    }
+
+
 
     // ── Dark mode state reader ──
     FileView {
@@ -66,16 +92,16 @@ ShellRoot {
     // ── BRIGHTNESSBAR ──
     BrightnessBar {}
 
-    // ── BAR (in-process, merged from quickshell-bar) ──
+    // ── BAR (in-process) ──
     Bar {
         id: barWidget
         onOpenPanel: function(tab) { networkPanel.togglePanel(tab) }
     }
 
-    // ── NETWORK PANEL (in-process, merged from quickshell-network) ──
-    NetworkPanel {
-        id: networkPanel
-    }
+    // ── NETWORK PANEL (DISABLED — using Control Center instead) ──
+    // NetworkPanel {
+    //     id: networkPanel
+    // }
 
     // ── LYRICS ──
     LyricsPanel {
@@ -170,30 +196,7 @@ ShellRoot {
         }
     }
 
-    // ── POLKIT (native QS agent, replaces polkit-kde-agent) ──
-    PolkitAgent {
-        id: polkitAgent
-    }
 
-    Variants {
-        model: Quickshell.screens
-        PanelWindow {
-            required property var modelData
-            screen: modelData
-            anchors.top: true; anchors.left: true; anchors.right: true; anchors.bottom: true
-            exclusionMode: ExclusionMode.Ignore
-            color: "transparent"
-            WlrLayershell.namespace: "quickshell:polkit"
-            WlrLayershell.keyboardFocus: polkitAgent.isActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-            WlrLayershell.layer: WlrLayer.Overlay
-            implicitWidth: modelData.width
-            implicitHeight: modelData.height
-            visible: polkitAgent.isActive
 
-            PolkitDialog {
-                anchors.fill: parent
-            }
-        }
-    }
 
 }

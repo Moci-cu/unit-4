@@ -40,14 +40,6 @@ Item {
         }
 
         // Grid
-        Repeater {
-            model: Math.floor(panel.width / 20) + 1
-            Rectangle { required property int index; x: index * 20; y: 0; width: 1; height: panel.height; color: root.lineVsoft }
-        }
-        Repeater {
-            model: Math.floor(panel.height / 20) + 1
-            Rectangle { required property int index; x: 0; y: index * 20; width: panel.width; height: 1; color: root.lineVsoft }
-        }
 
         Column {
             anchors { left: parent.left; right: parent.right; top: parent.top; margins: 28 }

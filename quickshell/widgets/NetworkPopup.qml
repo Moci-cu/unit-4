@@ -219,14 +219,6 @@ Item {
             Rectangle { x: -1; y: parent.height - 1; width: 3; height: 3; color: root.ink }
             Rectangle { x: parent.width - 1; y: parent.height - 1; width: 3; height: 3; color: root.ink }
 
-            Repeater {
-                model: Math.floor(parent.width / root.gridSize) + 1
-                Rectangle { required property int index; x: index * root.gridSize; y: 0; width: 1; height: parent.height; color: root.lineVsoft }
-            }
-            Repeater {
-                model: Math.floor(parent.height / root.gridSize) + 1
-                Rectangle { required property int index; x: 0; y: index * root.gridSize; width: parent.width; height: 1; color: root.lineVsoft }
-            }
 
             Item {
                 id: header
