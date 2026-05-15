@@ -194,6 +194,12 @@ static void render_frame(Grid& g, int w, int h, std::vector<unsigned char>& pixe
 static int generate_video(int w, int h, int fps, float duration,
                           const char* output, const char* quality,
                           bool hide_mode) {
+    // Guard: prevent tainted allocation size
+    if (w < 1 || w > 7680 || h < 1 || h > 4320) {
+        std::fprintf(stderr, "Invalid dimensions: %dx%d\n", w, h);
+        return 1;
+    }
+
     // Ensure output dir exists
     std::string output_path(output);
     auto slash = output_path.rfind('/');
@@ -295,12 +301,6 @@ int main(int argc, char* argv[]) {
     float       duration = std::atof(argv[5]);
     const char* output   = argv[6];
     const char* quality  = (argc > 7) ? argv[7] : "medium";
-
-    // Validate dimensions (prevent tainted allocation size)
-    if (w < 1 || w > 7680 || h < 1 || h > 4320) {
-        std::fprintf(stderr, "Invalid dimensions: %dx%d (max 7680x4320)\n", w, h);
-        return 1;
-    }
 
     // Sanitize output path (prevent command injection via shell metacharacters)
     for (const char* p = output; *p; ++p) {
