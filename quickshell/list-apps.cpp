@@ -42,6 +42,23 @@ static std::string strip_pct(const std::string& s) {
     return r;
 }
 
+static std::string escape_delim(const std::string& s) {
+    std::string r;
+    r.reserve(s.size() * 2);
+    for (char c : s) {
+        if (c == '\\') {
+            r.push_back('\\');
+            r.push_back('\\');
+        } else if (c == '|') {
+            r.push_back('\\');
+            r.push_back('|');
+        } else {
+            r.push_back(c);
+        }
+    }
+    return r;
+}
+
 struct Entry {
     std::string name;
     std::string exec;
@@ -168,11 +185,11 @@ int main() {
             if (seen.count(fingerprint)) continue;
             seen.insert(fingerprint);
 
-            std::cout << entry.name << "|"
-                      << entry.desktop_id << "|"
-                      << entry.categories << "|"
-                      << strip_pct(entry.exec) << "|"
-                      << entry.keywords << "\n";
+            std::cout << escape_delim(entry.name) << "|"
+                      << escape_delim(entry.desktop_id) << "|"
+                      << escape_delim(entry.categories) << "|"
+                      << escape_delim(strip_pct(entry.exec)) << "|"
+                      << escape_delim(entry.keywords) << "\n";
         }
     }
     return 0;

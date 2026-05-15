@@ -96,9 +96,18 @@ Item {
         path: "/proc/stat"
         onLoaded: {
             var p = text().trim().split(/\s+/)
-            if (p.length < 5 || p[0] !== "cpu") return
-            var used = parseInt(p[1]) + parseInt(p[2]) + parseInt(p[3])
-            var total = used + parseInt(p[4])
+            if (p.length < 9 || p[0] !== "cpu") return
+            // user, nice, system, idle, iowait, irq, softirq, steal
+            var user = parseInt(p[1])
+            var nice = parseInt(p[2])
+            var system = parseInt(p[3])
+            var idle = parseInt(p[4])
+            var iowait = parseInt(p[5]) || 0
+            var irq = parseInt(p[6]) || 0
+            var softirq = parseInt(p[7]) || 0
+            var steal = parseInt(p[8]) || 0
+            var used = user + nice + system + iowait + irq + softirq + steal
+            var total = used + idle
             if (root.lastCpuTotal > 0 && total > root.lastCpuTotal)
                 root.cpuVal = Math.round(100 * (used - root.lastCpuUsed) / (total - root.lastCpuTotal)) + "%"
             else if (root.lastCpuTotal === 0)
@@ -126,22 +135,60 @@ Item {
     Timer { interval: 5000; running: true; repeat: true; onTriggered: tempFile.reload() }
     FileView {
         id: tempFile
-        path: "/sys/class/hwmon/hwmon5/temp1_input"
+        path: ""
         onLoaded: {
+            if (path === "") return
             root.cpuTempNum = Math.round(parseInt(text().trim()) / 1000)
             root.cpuTemp = "TEMP " + root.cpuTempNum + "°"
         }
     }
     Timer { interval: 30000; running: true; repeat: true; onTriggered: tempFile.reload() }
 
+    Component.onCompleted: {
+        resolveTempSensor()
+    }
+
+    function resolveTempSensor() {
+        var knownSensors = ["coretemp", "k10temp"]
+        var basePath = "/sys/class/hwmon/"
+
+        for (var i = 0; i < 10; i++) {
+            var hwmonPath = basePath + "hwmon" + i + "/name"
+            var tempInputPath = basePath + "hwmon" + i + "/temp1_input"
+
+            var nameFile = Qt.createQmlObject(
+                'import Quickshell.Io; FileView { path: "' + hwmonPath + '" }',
+                root
+            )
+
+            try {
+                var sensorName = nameFile.text().trim()
+                if (knownSensors.indexOf(sensorName) !== -1) {
+                    tempFile.path = tempInputPath
+                    tempFile.reload()
+                    nameFile.destroy()
+                    return
+                }
+            } catch (e) {
+                // File doesn't exist or can't be read, continue
+            }
+
+            nameFile.destroy()
+        }
+
+        // Fallback to hardcoded path if no sensor found
+        tempFile.path = "/sys/class/hwmon/hwmon5/temp1_input"
+        tempFile.reload()
+    }
+
     // ── Battery (UPower native, 0 fork) ──
     readonly property var battery: UPower.displayDevice
-    readonly property bool hasBattery: root.battery && root.battery.isPresent && root.battery.percentage > 0
+    readonly property bool hasBattery: root.battery && root.battery.isPresent
     readonly property string batPercent: root.hasBattery ? Math.round(root.battery.percentage * 100) + "%" : ""
     readonly property string batCharging: root.hasBattery && root.battery.state === UPowerDeviceState.Charging ? " +" : ""
     readonly property string batPower: root.hasBattery ? Math.abs(root.battery.changeRate).toFixed(1) + "W" : ""
     readonly property color batColor: root.hasBattery
-        ? (root.battery.state === UPowerDeviceState.Charging ? root.netColor : (parseInt(root.batPercent) < 15 ? "#c86060" : root.cpuColor))
+        ? (root.battery.state === UPowerDeviceState.Charging ? root.netColor : (root.battery.percentage * 100 < 15 ? "#c86060" : root.cpuColor))
         : "transparent"
 
 
@@ -327,7 +374,7 @@ Item {
                             font.family: "Ndot 57"
                             font.pixelSize: 14
                             font.letterSpacing: 1
-                            color: parseFloat(root.cpuVal) > 12 ? "#c86060" : (root.cpuVal !== "--%" ? root.cpuColor : root.inkDim)
+                            color: parseFloat(root.cpuVal) > 12 ? "#c86060" : (root.cpuVal !== "--" ? root.cpuColor : root.inkDim)
                         }
                     }
 
@@ -346,7 +393,7 @@ Item {
                             font.family: "Ndot 57"
                             font.pixelSize: 14
                             font.letterSpacing: 1
-                            color: root.memVal !== "--%" ? root.memColor : root.inkDim
+                            color: root.memVal !== "--" ? root.memColor : root.inkDim
                         }
                     }
 

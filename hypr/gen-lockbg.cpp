@@ -12,12 +12,60 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <random>
 #include <string>
 #include <vector>
 
 int main(int argc, char* argv[]) {
     std::string out = (argc > 1) ? argv[1] : "/tmp/lockbg.png";
+
+    // Sanitize output path
+    if (out.empty()) {
+        std::fprintf(stderr, "Error: output path is empty\n");
+        return 1;
+    }
+
+    // Reject paths containing ".." to prevent directory traversal
+    if (out.find("..") != std::string::npos) {
+        std::fprintf(stderr, "Error: output path contains '..'\n");
+        return 1;
+    }
+
+    // Canonicalize path
+    std::error_code ec;
+    std::filesystem::path out_path = std::filesystem::weakly_canonical(out, ec);
+    if (ec) {
+        std::fprintf(stderr, "Error: cannot canonicalize path: %s\n", ec.message().c_str());
+        return 1;
+    }
+    out = out_path.string();
+
+    // Check if parent directory exists and is writable
+    std::filesystem::path parent = out_path.parent_path();
+    if (!std::filesystem::exists(parent)) {
+        std::fprintf(stderr, "Error: parent directory does not exist: %s\n", parent.c_str());
+        return 1;
+    }
+    if (!std::filesystem::is_directory(parent)) {
+        std::fprintf(stderr, "Error: parent path is not a directory: %s\n", parent.c_str());
+        return 1;
+    }
+
+    // Check writability: if file exists, check it's writable; otherwise check parent is writable
+    if (std::filesystem::exists(out_path)) {
+        auto perms = std::filesystem::status(out_path).permissions();
+        if ((perms & std::filesystem::perms::owner_write) == std::filesystem::perms::none) {
+            std::fprintf(stderr, "Error: output file is not writable: %s\n", out.c_str());
+            return 1;
+        }
+    } else {
+        auto perms = std::filesystem::status(parent).permissions();
+        if ((perms & std::filesystem::perms::owner_write) == std::filesystem::perms::none) {
+            std::fprintf(stderr, "Error: parent directory is not writable: %s\n", parent.c_str());
+            return 1;
+        }
+    }
 
     constexpr int W    = 1920;
     constexpr int H    = 1080;

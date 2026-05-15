@@ -675,7 +675,7 @@ text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
                                 }
                                 Text {
                                     id:faLbl; anchors.centerIn:parent
-                                    text: modelData.cmd === "__dark__" ? (root.isDarkMode ? "LIGHT" : "DARK") : modelData.l; font.family:root.ff; font.pixelSize:13; font.letterSpacing:2.5; font.weight:Font.Bold
+                                    text: modelData.cmd === "__dark__" ? (Theme.darkMode ? "LIGHT" : "DARK") : modelData.l; font.family:root.ff; font.pixelSize:13; font.letterSpacing:2.5; font.weight:Font.Bold
                                     color: {
                                         if (modelData.cmd === "__night__" && root.nightMode) return root.accent
                                         if (modelData.cmd === "__coffee__" && root.coffeeMode) return root.accent

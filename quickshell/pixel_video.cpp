@@ -16,6 +16,9 @@
 #include <random>
 #include <string>
 #include <vector>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 
 // ── Constants (matching Python) ──
 constexpr int    CELL       = 7;
@@ -70,6 +73,9 @@ struct Wave {
 
 // ── Simulation ──
 static float max_dist(float cx, float cy, int cols, int rows) {
+    // Guard against degenerate 1-cell axes
+    if (rows <= 1 || cols <= 1) return 0.0f;
+
     float m = 0.0f;
     for (int r = 0; r < rows; r += rows - 1) {
         for (int c = 0; c < cols; c += cols - 1) {
@@ -239,16 +245,56 @@ static int generate_video(int w, int h, int fps, float duration,
     char fps_str[16];
     std::snprintf(fps_str, sizeof(fps_str), "%d", fps);
 
-    // Open ffmpeg pipe
-    FILE* ffmpeg = popen(
-        ("ffmpeg -y -f rawvideo -vcodec rawvideo -s " + std::string(size_str) +
-         " -pix_fmt rgb24 -r " + std::string(fps_str) + " -i - -an -vcodec libx264" +
-         " -pix_fmt yuv420p -crf " + crf + " -preset " + preset +
-         " -tune fastdecode -movflags +faststart " + std::string(output) +
-         " 2>/dev/null").c_str(), "w");
+    // Build ffmpeg arguments (no shell interpolation)
+    std::vector<const char*> ffmpeg_args = {
+        "ffmpeg", "-y", "-f", "rawvideo", "-vcodec", "rawvideo",
+        "-s", size_str, "-pix_fmt", "rgb24", "-r", fps_str,
+        "-i", "-", "-an", "-vcodec", "libx264", "-pix_fmt", "yuv420p",
+        "-crf", crf.c_str(), "-preset", preset.c_str(),
+        "-tune", "fastdecode", "-movflags", "+faststart",
+        output,  // output path passed as separate argument, not shell-interpolated
+        nullptr
+    };
 
+    // Create pipe for stdin
+    int pipefd[2];
+    if (pipe(pipefd) == -1) {
+        std::fprintf(stderr, "Failed to create pipe\n");
+        return 1;
+    }
+
+    pid_t pid = fork();
+    if (pid == -1) {
+        std::fprintf(stderr, "Failed to fork\n");
+        close(pipefd[0]);
+        close(pipefd[1]);
+        return 1;
+    }
+
+    if (pid == 0) {
+        // Child process
+        close(pipefd[1]); // Close write end
+        dup2(pipefd[0], STDIN_FILENO);
+        close(pipefd[0]);
+
+        // Redirect stderr to /dev/null
+        int devnull = open("/dev/null", O_WRONLY);
+        if (devnull != -1) {
+            dup2(devnull, STDERR_FILENO);
+            close(devnull);
+        }
+
+        execvp("ffmpeg", const_cast<char* const*>(ffmpeg_args.data()));
+        std::fprintf(stderr, "Failed to exec ffmpeg\n");
+        _exit(1);
+    }
+
+    // Parent process
+    close(pipefd[0]); // Close read end
+    FILE* ffmpeg = fdopen(pipefd[1], "w");
     if (!ffmpeg) {
-        std::fprintf(stderr, "Failed to open ffmpeg pipe\n");
+        std::fprintf(stderr, "Failed to fdopen pipe\n");
+        close(pipefd[1]);
         return 1;
     }
 
@@ -272,9 +318,13 @@ static int generate_video(int w, int h, int fps, float duration,
     }
     std::putchar('\n');
 
-    int rc = pclose(ffmpeg);
-    if (rc != 0) {
-        std::fprintf(stderr, "ffmpeg failed (code %d)\n", rc);
+    fclose(ffmpeg);
+
+    // Wait for child process
+    int status;
+    waitpid(pid, &status, 0);
+    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+        std::fprintf(stderr, "ffmpeg failed (status %d)\n", status);
         return 1;
     }
 

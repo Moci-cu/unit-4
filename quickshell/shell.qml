@@ -75,7 +75,7 @@ ShellRoot {
 
     GlobalShortcut {
         name: "networkToggle"
-        onPressed: { networkPanel.togglePanel("wifi") }
+        onPressed: { root.sysPanelFireToggle() }
     }
 
     GlobalShortcut {
@@ -95,7 +95,7 @@ ShellRoot {
     // ── BAR (in-process) ──
     Bar {
         id: barWidget
-        onOpenPanel: function(tab) { networkPanel.togglePanel(tab) }
+        onOpenPanel: function(tab) { root.sysPanelFireToggle() }
     }
 
     // ── NETWORK PANEL (DISABLED — using Control Center instead) ──
