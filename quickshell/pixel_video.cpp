@@ -296,6 +296,21 @@ int main(int argc, char* argv[]) {
     const char* output   = argv[6];
     const char* quality  = (argc > 7) ? argv[7] : "medium";
 
+    // Validate dimensions (prevent tainted allocation size)
+    if (w < 1 || w > 7680 || h < 1 || h > 4320) {
+        std::fprintf(stderr, "Invalid dimensions: %dx%d (max 7680x4320)\n", w, h);
+        return 1;
+    }
+
+    // Sanitize output path (prevent command injection via shell metacharacters)
+    for (const char* p = output; *p; ++p) {
+        if (*p == ';' || *p == '|' || *p == '&' || *p == '$' ||
+            *p == '`' || *p == '(' || *p == ')') {
+            std::fprintf(stderr, "Invalid char in output path: '%c'\n", *p);
+            return 1;
+        }
+    }
+
     bool hide = false;
     if (std::strcmp(mode, "hide") == 0) hide = true;
     else if (std::strcmp(mode, "reveal") != 0) { usage(argv[0]); return 1; }
