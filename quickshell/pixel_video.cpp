@@ -73,12 +73,12 @@ struct Wave {
 
 // ── Simulation ──
 static float max_dist(float cx, float cy, int cols, int rows) {
-    // Guard against degenerate 1-cell axes
-    if (rows <= 1 || cols <= 1) return 0.0f;
-
+    if (rows <= 1 || cols <= 1) return 1.0f;
     float m = 0.0f;
-    for (int r = 0; r < rows; r += rows - 1) {
-        for (int c = 0; c < cols; c += cols - 1) {
+    for (int ri = 0; ri < 2; ++ri) {
+        for (int ci = 0; ci < 2; ++ci) {
+            int r = ri ? rows - 1 : 0;
+            int c = ci ? cols - 1 : 0;
             float dx = cx - c, dy = cy - r;
             float d  = std::sqrt(dx * dx + dy * dy);
             if (d > m) m = d;

@@ -18,7 +18,17 @@
 #include <vector>
 
 int main(int argc, char* argv[]) {
-    std::string out = (argc > 1) ? argv[1] : "/tmp/lockbg.png";
+    if (argc < 2 || argv[1][0] == '\0') {
+        std::fprintf(stderr, "Usage: gen-lockbg <output.png>\n");
+        return 1;
+    }
+    std::string out = argv[1];
+
+    // Reject path traversal
+    if (out.find("..") != std::string::npos) {
+        std::fprintf(stderr, "Path traversal rejected: %s\n", out.c_str());
+        return 1;
+    }
 
     // Sanitize output path
     if (out.empty()) {

@@ -29,6 +29,18 @@ static std::string semicolon_to_space(const std::string& s) {
     return r;
 }
 
+// Escape pipe and backslash for consumer split("|")/unescape
+static std::string escape_delim(const std::string& s) {
+    std::string r;
+    r.reserve(s.size() + 4);
+    for (char c : s) {
+        if (c == '\\') r += "\\\\";
+        else if (c == '|') r += "\\|";
+        else r += c;
+    }
+    return r;
+}
+
 static std::string strip_pct(const std::string& s) {
     std::string r;
     r.reserve(s.size());

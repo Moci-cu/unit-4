@@ -80,8 +80,8 @@ Item {
         return at.title || ""
     }
 
-    property string cpuVal: "--"
-    property string memVal: "--"
+    property string cpuVal: "--%"
+    property string memVal: "--%"
     property string cpuTemp: "--"
     property int cpuTempNum: 0
     property int lastCpuUsed: 0
@@ -142,7 +142,6 @@ Item {
             root.cpuTemp = "TEMP " + root.cpuTempNum + "°"
         }
     }
-    Timer { interval: 30000; running: true; repeat: true; onTriggered: tempFile.reload() }
 
     Component.onCompleted: {
         resolveTempSensor()
