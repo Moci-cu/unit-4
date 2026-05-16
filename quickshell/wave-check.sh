@@ -24,9 +24,8 @@ LOG_FILE="$LOG_DIR/wave-check.log"
 REVEAL_VIDEO="$VIDEOS_DIR/wave_reveal.mp4"
 HIDE_VIDEO="$VIDEOS_DIR/wave_hide.mp4"
 
-# Scripts générateurs
-REVEAL_SCRIPT="$QS_DIR/pixel_wave.py"
-HIDE_SCRIPT="$QS_DIR/pixel-wave-close-video.py"
+# Générateur C++ (remplace pixel_wave.py + pixel-wave-close-video.py)
+PIXEL_VIDEO="$QS_DIR/pixel_video"
 
 # ── Préparation ──
 mkdir -p "$VIDEOS_DIR" "$LOG_DIR"
@@ -39,14 +38,9 @@ echo "wave-check.sh — démarrage"
 echo "  videos dir : $VIDEOS_DIR"
 echo "═══════════════════════════════════════════════════════════"
 
-# ── Vérification présence des scripts ──
-missing_scripts=()
-[[ -f "$REVEAL_SCRIPT" ]] || missing_scripts+=("$REVEAL_SCRIPT")
-[[ -f "$HIDE_SCRIPT"   ]] || missing_scripts+=("$HIDE_SCRIPT")
-
-if (( ${#missing_scripts[@]} > 0 )); then
-    echo "❌ Script(s) générateur(s) manquant(s) :"
-    printf '   - %s\n' "${missing_scripts[@]}"
+# ── Vérification présence du générateur ──
+if [[ ! -x "$PIXEL_VIDEO" ]]; then
+    echo "❌ Générateur pixel_video manquant ou non exécutable : $PIXEL_VIDEO"
     echo "Abandon."
     exit 1
 fi
@@ -56,7 +50,7 @@ if [[ -f "$REVEAL_VIDEO" ]]; then
     echo "✓ wave_reveal.mp4 présent"
 else
     echo "⚠ wave_reveal.mp4 manquant — génération…"
-    python "$REVEAL_SCRIPT" -o "$REVEAL_VIDEO"
+    "$PIXEL_VIDEO" reveal 1920 1080 60 1.0 "$REVEAL_VIDEO" medium
     if [[ -f "$REVEAL_VIDEO" ]]; then
         echo "✓ wave_reveal.mp4 généré"
     else
@@ -70,7 +64,7 @@ if [[ -f "$HIDE_VIDEO" ]]; then
     echo "✓ wave_hide.mp4 présent"
 else
     echo "⚠ wave_hide.mp4 manquant — génération…"
-    python "$HIDE_SCRIPT" -o "$HIDE_VIDEO"
+    "$PIXEL_VIDEO" hide 1920 1080 60 1.2 "$HIDE_VIDEO" medium
     if [[ -f "$HIDE_VIDEO" ]]; then
         echo "✓ wave_hide.mp4 généré"
     else
