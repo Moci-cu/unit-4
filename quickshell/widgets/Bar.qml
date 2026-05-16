@@ -43,7 +43,7 @@ Item {
     readonly property int focusedWs: Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1
     property var wsWithApps: ({})
 
-    Component.onCompleted: { refreshApps(); resolveTempSensor() }
+    Component.onCompleted: { refreshApps(); resolveTempSensor(); if (root.hasBattery) root.batPower = Math.abs(root.battery.changeRate).toFixed(1) + "W" }
     Connections {
         target: Hyprland
         function onFocusedWorkspaceChanged() { wsRefresh.start() }
