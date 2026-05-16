@@ -19,3 +19,8 @@ __pycache__/
 
 # Generated media
 *.mp4
+
+# C++ compiled binaries (source in .cpp)
+quickshell/list-apps
+hypr/gen-lockbg
+quickshell/pixel_video
