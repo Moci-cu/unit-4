@@ -234,26 +234,9 @@ Item {
         Quickshell.execDetached(cmd.trim().split(/\s+/))
         root.closeMenu()
     }
-
     function killActiveApps() {
-        var vals = Hyprland.toplevels.values
-        var qs = "quickshell"
-        var cmds = []
-        for (var i = 0; i < vals.length; i++) {
-            var t = vals[i]
-            if (!t) continue
-            var tc = t.clazz
-            if (tc && tc.toLowerCase().indexOf(qs) >= 0) continue
-            var addr = t.address
-            if (addr) {
-                var a = String(addr)
-                if (a.indexOf("0x") !== 0) a = "0x" + a
-                cmds.push("dispatch killwindow address:" + a)
-            }
-        }
         root.closeMenu()
-        if (cmds.length > 0)
-            Quickshell.execDetached(["hyprctl", "--batch", cmds.join("; ")])
+        Quickshell.execDetached([Quickshell.env("HOME") + "/.config/quickshell/killall.sh"])
     }
 
     property string nightStateFile: Quickshell.env("HOME") + "/.config/quickshell/night-mode.state"
