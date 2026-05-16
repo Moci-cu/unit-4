@@ -43,7 +43,7 @@ Item {
     readonly property int focusedWs: Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1
     property var wsWithApps: ({})
 
-    Component.onCompleted: refreshApps()
+    Component.onCompleted: { refreshApps(); resolveTempSensor(); if (root.hasBattery) root.batPower = Math.abs(root.battery.changeRate).toFixed(1) + "W" }
     Connections {
         target: Hyprland
         function onFocusedWorkspaceChanged() { wsRefresh.start() }
@@ -143,10 +143,6 @@ Item {
         }
     }
 
-    Component.onCompleted: {
-        resolveTempSensor()
-    }
-
     function resolveTempSensor() {
         var knownSensors = ["coretemp", "k10temp"]
         var basePath = "/sys/class/hwmon/"
@@ -185,10 +181,20 @@ Item {
     readonly property bool hasBattery: root.battery && root.battery.isPresent
     readonly property string batPercent: root.hasBattery ? Math.round(root.battery.percentage * 100) + "%" : ""
     readonly property string batCharging: root.hasBattery && root.battery.state === UPowerDeviceState.Charging ? " +" : ""
-    readonly property string batPower: root.hasBattery ? Math.abs(root.battery.changeRate).toFixed(1) + "W" : ""
+    property string batPower: ""
     readonly property color batColor: root.hasBattery
         ? (root.battery.state === UPowerDeviceState.Charging ? root.netColor : (root.battery.percentage * 100 < 15 ? "#c86060" : root.cpuColor))
         : "transparent"
+
+    Timer {
+        interval: 1000
+        running: root.hasBattery
+        repeat: true
+        onTriggered: {
+            if (root.hasBattery)
+                root.batPower = Math.abs(root.battery.changeRate).toFixed(1) + "W"
+        }
+    }
 
 
     readonly property string wifiSsid: {
