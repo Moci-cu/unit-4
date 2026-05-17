@@ -235,22 +235,16 @@ Item {
         root.closeMenu()
     }
     function killActiveApps() {
-        Hyprland.refreshToplevels()
-        var vals = Hyprland.toplevels.values || []
+        var cur = Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1
         var batch = []
-        for (var i = 0; i < vals.length; i++) {
-            var t = vals[i]
-            if (!t || !t.address) continue
-            var cls = (t.lastIpcObject && t.lastIpcObject["class"]) || ""
-            if (cls.toLowerCase().indexOf("quickshell") >= 0) continue
-            var addr = String(t.address)
-            if (addr.indexOf("0x") !== 0) addr = "0x" + addr
-            batch.push('dispatch hl.dsp.focus({window="address:' + addr + '"})')
-            batch.push("dispatch hl.dsp.window.close()")
+        for (var i = 1; i <= 10; i++) {
+            batch.push("dispatch hl.dsp.focus({workspace=" + i + "})")
+            for (var j = 0; j < 10; j++)
+                batch.push("dispatch hl.dsp.window.close()")
         }
+        batch.push("dispatch hl.dsp.focus({workspace=" + cur + "})")
         root.closeMenu()
-        if (batch.length > 0)
-            Quickshell.execDetached(["hyprctl", "--batch", batch.join("; ")])
+        Quickshell.execDetached(["hyprctl", "--batch", batch.join("; ")])
     }
 
     property string nightStateFile: Quickshell.env("HOME") + "/.config/quickshell/night-mode.state"
