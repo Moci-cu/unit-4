@@ -90,8 +90,7 @@ Item {
         { id: "S03", name: "Sleep",            cmd: "__sleep__",     desktopId: "__sleep__",     meta: "systemctl",  keywords: "sleep suspend standby",             icon: "◈", cat: "sys" },
         { id: "S04", name: "Reboot",           cmd: "__reboot__",    desktopId: "__reboot__",    meta: "systemctl",  keywords: "reboot restart",                    icon: "↻", cat: "sys" },
         { id: "S05", name: "Shut Down",        cmd: "__shutdown__",  desktopId: "__shutdown__",  meta: "systemctl",  keywords: "shutdown poweroff halt power off",  icon: "⏻", cat: "sys" },
-        { id: "S06", name: "Kill All Apps", cmd: "__killactive__",desktopId: "__killactive__", meta: "hyprland",   keywords: "kill close terminate workspace apps",icon: "✕", cat: "sys" },
-        { id: "S07", name: "Power: Performance", cmd: "tlpctl performance", desktopId: "tlpctl performance", meta: "tlpctl", keywords: "power performance profile tlpctl", icon: "⬡", cat: "sys" },
+        { id: "S06", name: "Power: Performance", cmd: "tlpctl performance", desktopId: "tlpctl performance", meta: "tlpctl", keywords: "power performance profile tlpctl", icon: "⬡", cat: "sys" },
         { id: "S08", name: "Power: Balanced",    cmd: "tlpctl balanced",    desktopId: "tlpctl balanced",    meta: "tlpctl", keywords: "power balanced profile tlpctl",    icon: "⬡", cat: "sys" },
         { id: "S09", name: "Power: Power-saver", cmd: "tlpctl power-saver", desktopId: "tlpctl power-saver", meta: "tlpctl", keywords: "power saver profile tlpctl",   icon: "⬡", cat: "sys" }
     ]
@@ -219,8 +218,6 @@ Item {
             Quickshell.execDetached(["systemctl", "reboot"])
         } else if (cmd === "__shutdown__") {
             Quickshell.execDetached(["systemctl", "poweroff"])
-        } else if (cmd === "__killactive__") {
-            root.killActiveApps()
         } else {
             var parts = cmd.trim().split(/\s+/)
             if (parts.length === 0 || parts[0] === "") return
@@ -233,18 +230,6 @@ Item {
         if (!cmd || cmd === "") return
         Quickshell.execDetached(cmd.trim().split(/\s+/))
         root.closeMenu()
-    }
-    function killActiveApps() {
-        var cur = Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1
-        var batch = []
-        for (var i = 1; i <= 10; i++) {
-            batch.push("dispatch hl.dsp.focus({workspace=" + i + "})")
-            for (var j = 0; j < 10; j++)
-                batch.push("dispatch hl.dsp.window.close()")
-        }
-        batch.push("dispatch hl.dsp.focus({workspace=" + cur + "})")
-        root.closeMenu()
-        Quickshell.execDetached(["hyprctl", "--batch", batch.join("; ")])
     }
 
     property string nightStateFile: Quickshell.env("HOME") + "/.config/quickshell/night-mode.state"
