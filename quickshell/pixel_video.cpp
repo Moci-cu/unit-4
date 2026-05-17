@@ -208,11 +208,11 @@ static int generate_video(int w, int h, int fps, float duration,
     }
 
     // Ensure output dir exists
-    std::string output_path(output);
-    auto slash = output_path.rfind('/');
-    if (slash != std::string::npos) {
+    std::filesystem::path out_path(output);
+    auto parent = out_path.parent_path();
+    if (!parent.empty()) {
         std::error_code ec;
-        std::filesystem::create_directories(output_path.substr(0, slash), ec);
+        std::filesystem::create_directories(parent, ec);
     }
 
     float speed_scale = 60.0f / fps;
@@ -235,7 +235,7 @@ static int generate_video(int w, int h, int fps, float duration,
     int total_frames = static_cast<int>(duration * fps);
 
     // Build ffmpeg command
-    std::string crf, preset, tune;
+    std::string crf, preset;
     if (std::strcmp(quality, "high") == 0)   { crf = "18"; preset = "medium"; }
     else if (std::strcmp(quality, "low") == 0) { crf = "28"; preset = "fast"; }
     else                                       { crf = "23"; preset = "fast"; }
@@ -307,6 +307,10 @@ static int generate_video(int w, int h, int fps, float duration,
         step_simulation(g, waves, speed_scale);
         render_frame(g, w, h, pixels);
         std::fwrite(pixels.data(), 1, pixels.size(), ffmpeg);
+        if (std::ferror(ffmpeg)) {
+            std::fprintf(stderr, "Write error piping to ffmpeg\n");
+            break;
+        }
 
         int pct = 100 * (frame + 1) / total_frames;
         if (pct != last_pct) {

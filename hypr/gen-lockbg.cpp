@@ -30,18 +30,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Sanitize output path
-    if (out.empty()) {
-        std::fprintf(stderr, "Error: output path is empty\n");
-        return 1;
-    }
-
-    // Reject paths containing ".." to prevent directory traversal
-    if (out.find("..") != std::string::npos) {
-        std::fprintf(stderr, "Error: output path contains '..'\n");
-        return 1;
-    }
-
     // Canonicalize path
     std::error_code ec;
     std::filesystem::path out_path = std::filesystem::weakly_canonical(out, ec);
@@ -51,28 +39,11 @@ int main(int argc, char* argv[]) {
     }
     out = out_path.string();
 
-    // Check if parent directory exists and is writable
-    std::filesystem::path parent = out_path.parent_path();
-    if (!std::filesystem::exists(parent)) {
-        std::fprintf(stderr, "Error: parent directory does not exist: %s\n", parent.c_str());
-        return 1;
-    }
-    if (!std::filesystem::is_directory(parent)) {
-        std::fprintf(stderr, "Error: parent path is not a directory: %s\n", parent.c_str());
-        return 1;
-    }
-
-    // Check writability: if file exists, check it's writable; otherwise check parent is writable
-    if (std::filesystem::exists(out_path)) {
-        auto perms = std::filesystem::status(out_path).permissions();
-        if ((perms & std::filesystem::perms::owner_write) == std::filesystem::perms::none) {
-            std::fprintf(stderr, "Error: output file is not writable: %s\n", out.c_str());
-            return 1;
-        }
-    } else {
-        auto perms = std::filesystem::status(parent).permissions();
-        if ((perms & std::filesystem::perms::owner_write) == std::filesystem::perms::none) {
-            std::fprintf(stderr, "Error: parent directory is not writable: %s\n", parent.c_str());
+    // Verify parent directory exists (skip for bare filenames — current dir assumed valid)
+    if (out_path.has_parent_path()) {
+        std::filesystem::path parent = out_path.parent_path();
+        if (!std::filesystem::exists(parent) || !std::filesystem::is_directory(parent)) {
+            std::fprintf(stderr, "Error: parent directory missing: %s\n", parent.c_str());
             return 1;
         }
     }
