@@ -131,7 +131,7 @@ static std::vector<fs::path> discover_paths() {
     if (!home) return paths;
     std::string h(home);
     const char* xdg = getenv("XDG_DATA_HOME");
-    if (xdg) paths.push_back(fs::path(xdg) / "applications");
+    if (xdg && xdg[0] != '\0') paths.push_back(fs::path(xdg) / "applications");
     else paths.push_back(fs::path(h) / ".local/share/applications");
     paths.push_back(fs::path(h) / ".local/share/flatpak/exports/share/applications");
     return paths;

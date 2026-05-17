@@ -91,8 +91,8 @@ Item {
         { id: "S04", name: "Reboot",           cmd: "__reboot__",    desktopId: "__reboot__",    meta: "systemctl",  keywords: "reboot restart",                    icon: "↻", cat: "sys" },
         { id: "S05", name: "Shut Down",        cmd: "__shutdown__",  desktopId: "__shutdown__",  meta: "systemctl",  keywords: "shutdown poweroff halt power off",  icon: "⏻", cat: "sys" },
         { id: "S06", name: "Power: Performance", cmd: "tlpctl performance", desktopId: "tlpctl performance", meta: "tlpctl", keywords: "power performance profile tlpctl", icon: "⬡", cat: "sys" },
-        { id: "S08", name: "Power: Balanced",    cmd: "tlpctl balanced",    desktopId: "tlpctl balanced",    meta: "tlpctl", keywords: "power balanced profile tlpctl",    icon: "⬡", cat: "sys" },
-        { id: "S09", name: "Power: Power-saver", cmd: "tlpctl power-saver", desktopId: "tlpctl power-saver", meta: "tlpctl", keywords: "power saver profile tlpctl",   icon: "⬡", cat: "sys" }
+        { id: "S07", name: "Power: Balanced",    cmd: "tlpctl balanced",    desktopId: "tlpctl balanced",    meta: "tlpctl", keywords: "power balanced profile tlpctl",    icon: "⬡", cat: "sys" },
+        { id: "S08", name: "Power: Power-saver", cmd: "tlpctl power-saver", desktopId: "tlpctl power-saver", meta: "tlpctl", keywords: "power saver profile tlpctl",   icon: "⬡", cat: "sys" }
     ]
 
     readonly property var catLabels: ({
@@ -422,7 +422,7 @@ Item {
                                 }
                                 Text {
                                     anchors { right:parent.right; rightMargin:12; verticalCenter:parent.verticalCenter }
-                                    text: (root.catCounts[modelData] || (modelData === "all" ? root.apps.length + 9 : 0)).toString().padStart(2,"0")
+                                    text: (root.catCounts[modelData] || (modelData === "all" ? root.apps.length + root.specialItems.length : 0)).toString().padStart(2,"0")
                                     font.family:root.ff; font.pixelSize:13; font.letterSpacing:1
                                     color: parent.isActive ? Qt.rgba(214/255,207/255,181/255,0.6) : Qt.rgba(122/255,115/255,88/255,0.5)
                                 }

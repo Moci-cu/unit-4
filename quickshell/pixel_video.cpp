@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <climits>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -327,7 +328,12 @@ static int generate_video(int w, int h, int fps, float duration,
 
     // Wait for child process (EINTR-safe)
     int status;
-    while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
+    int r;
+    while ((r = waitpid(pid, &status, 0)) < 0 && errno == EINTR) {}
+    if (r < 0) {
+        std::fprintf(stderr, "waitpid failed\n");
+        return 1;
+    }
     if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
         std::fprintf(stderr, "ffmpeg failed (status %d)\n", status);
         return 1;
@@ -349,20 +355,36 @@ static void usage(const char* prog) {
 int main(int argc, char* argv[]) {
     if (argc < 7) { usage(argv[0]); return 1; }
 
-    const char* mode     = argv[1];
-    // Parse CLI args with validation
+    const char* mode = argv[1];
     char* end = nullptr;
-    int         w        = static_cast<int>(std::strtol(argv[2], &end, 10));
-    if (*end) { std::fprintf(stderr, "invalid width\n"); return 1; }
-    end = nullptr;
-    int         h        = static_cast<int>(std::strtol(argv[3], &end, 10));
-    if (*end) { std::fprintf(stderr, "invalid height\n"); return 1; }
-    end = nullptr;
-    int         fps      = static_cast<int>(std::strtol(argv[4], &end, 10));
-    if (*end) { std::fprintf(stderr, "invalid fps\n"); return 1; }
-    end = nullptr;
-    float       duration = std::strtof(argv[5], &end);
-    if (*end) { std::fprintf(stderr, "invalid duration\n"); return 1; }
+
+    errno = 0;
+    long lw = std::strtol(argv[2], &end, 10);
+    if (end == argv[2] || *end || errno == ERANGE || lw <= 0 || lw > INT_MAX) {
+        std::fprintf(stderr, "invalid width\n"); return 1;
+    }
+
+    errno = 0;
+    long lh = std::strtol(argv[3], &end, 10);
+    if (end == argv[3] || *end || errno == ERANGE || lh <= 0 || lh > INT_MAX) {
+        std::fprintf(stderr, "invalid height\n"); return 1;
+    }
+
+    errno = 0;
+    long lf = std::strtol(argv[4], &end, 10);
+    if (end == argv[4] || *end || errno == ERANGE || lf <= 0 || lf > INT_MAX) {
+        std::fprintf(stderr, "invalid fps\n"); return 1;
+    }
+
+    errno = 0;
+    float duration = std::strtof(argv[5], &end);
+    if (end == argv[5] || *end || errno == ERANGE || duration <= 0.0f) {
+        std::fprintf(stderr, "invalid duration\n"); return 1;
+    }
+
+    int w   = static_cast<int>(lw);
+    int h   = static_cast<int>(lh);
+    int fps = static_cast<int>(lf);
     const char* output   = argv[6];
     const char* quality  = (argc > 7) ? argv[7] : "medium";
 
