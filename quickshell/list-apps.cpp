@@ -1,10 +1,10 @@
 // clist-apps.cpp — high-performance .desktop parser
 // Compile: g++ -O3 -flto -march=native -std=c++17 -o list-apps list-apps.cpp
 //          strip -s list-apps
-//          upx --best list-apps (optional)
 
 #include <algorithm>
 #include <cstring>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -29,7 +29,87 @@ static std::string semicolon_to_space(const std::string& s) {
     return r;
 }
 
-// Escape pipe and backslash for consumer split("|")/unescape
+struct Entry {
+    std::string name, exec, categories, keywords, desktop_id;
+    bool no_display = false, hidden = false;
+};
+
+static void set_value(Entry& e, const std::string& key, const std::string& val) {
+    std::string base = key;
+    auto br = key.find('[');
+    if (br != std::string::npos) base = key.substr(0, br);
+
+    if (base == "Name" && (e.name.empty() || br == std::string::npos))
+        e.name = val;
+    else if (base == "Exec" && e.exec.empty())
+        e.exec = val;
+    else if (base == "Categories" && e.categories.empty())
+        e.categories = val;
+    else if (base == "Keywords" && e.keywords.empty())
+        e.keywords = semicolon_to_space(val);
+    else if (base == "NoDisplay")
+        e.no_display = (val == "true");
+    else if (base == "Hidden")
+        e.hidden = (val == "true");
+}
+
+static Entry parse(const fs::path& path) {
+    Entry e;
+    e.desktop_id = path.stem().string();
+
+    std::ifstream f(path);
+    std::string line;
+    bool in_section = false;
+    std::string current_key;
+    std::string pending_value;
+
+    while (std::getline(f, line)) {
+        line = trim(line);
+        if (line.empty() || line[0] == '#') continue;
+
+        if (line[0] == '[') {
+            if (!current_key.empty() && !pending_value.empty())
+                set_value(e, current_key, pending_value);
+            in_section = (line == "[Desktop Entry]");
+            current_key.clear();
+            pending_value.clear();
+            continue;
+        }
+        if (!in_section) continue;
+
+        auto eq = line.find('=');
+        if (eq == std::string::npos && !current_key.empty()) {
+            if (!pending_value.empty()) pending_value += ' ';
+            pending_value += line;
+            continue;
+        }
+
+        if (!current_key.empty() && !pending_value.empty())
+            set_value(e, current_key, pending_value);
+
+        if (eq == std::string::npos) continue;
+
+        current_key = trim(line.substr(0, eq));
+        pending_value = trim(line.substr(eq + 1));
+    }
+    if (!current_key.empty() && !pending_value.empty())
+        set_value(e, current_key, pending_value);
+
+    return e;
+}
+
+static std::string strip_pct(const std::string& s) {
+    std::string r;
+    r.reserve(s.size());
+    for (size_t i = 0; i < s.size(); ++i) {
+        if (s[i] == '%' && i + 1 < s.size() && std::isalpha(static_cast<unsigned char>(s[i + 1]))) {
+            ++i; continue;
+        }
+        r.push_back(s[i]);
+    }
+    return r;
+}
+
 static std::string escape_delim(const std::string& s) {
     std::string r;
     r.reserve(s.size() + 4);
@@ -39,118 +119,6 @@ static std::string escape_delim(const std::string& s) {
         else r += c;
     }
     return r;
-}
-
-static std::string strip_pct(const std::string& s) {
-    std::string r;
-    r.reserve(s.size());
-    for (size_t i = 0; i < s.size(); ++i) {
-        if (s[i] == '%' && i + 1 < s.size() && std::isalpha(static_cast<unsigned char>(s[i + 1]))) {
-            ++i;
-            continue;
-        }
-        r.push_back(s[i]);
-    }
-    return r;
-}
-
-static std::string escape_delim(const std::string& s) {
-    std::string r;
-    r.reserve(s.size() * 2);
-    for (char c : s) {
-        if (c == '\\') {
-            r.push_back('\\');
-            r.push_back('\\');
-        } else if (c == '|') {
-            r.push_back('\\');
-            r.push_back('|');
-        } else {
-            r.push_back(c);
-        }
-    }
-    return r;
-}
-
-struct Entry {
-    std::string name;
-    std::string exec;
-    std::string categories;
-    std::string keywords;
-    std::string desktop_id;
-    bool no_display = false;
-    bool hidden = false;
-};
-
-static Entry parse(const fs::path& path) {
-    Entry e;
-    e.desktop_id = path.stem().string();
-
-    std::ifstream f(path);
-    std::string line;
-    bool in_section = false;
-    std::string pending_value;
-
-    while (std::getline(f, line)) {
-        line = trim(line);
-        if (line.empty() || line[0] == '#') continue;
-
-        if (line[0] == '[') {
-            in_section = (line == "[Desktop Entry]");
-            continue;
-        }
-        if (!in_section) continue;
-
-        // Continuation: line starts with whitespace or is appended to previous value
-        bool is_continuation = !pending_value.empty() && (line[0] == ' ' || line[0] == '\t');
-        if (is_continuation) {
-            pending_value += line;
-            continue;
-        }
-
-        auto eq = line.find('=');
-        if (eq == std::string::npos) continue;
-
-        std::string key = trim(line.substr(0, eq));
-        std::string val = trim(line.substr(eq + 1));
-
-        // Extract base key (strip [lang] suffix)
-        std::string base = key;
-        auto br = key.find('[');
-        if (br != std::string::npos) base = key.substr(0, br);
-
-        // Only set if not already set (prefer bare key, then first locale)
-        if (base == "Name" && (e.name.empty() || br == std::string::npos)) {
-            e.name = val;
-        } else if (base == "Exec" && e.exec.empty()) {
-            // Exec values often contain continuation across multiple lines
-            // Read rest of multiline value
-            std::string full_val = val;
-            std::string next;
-            auto pos = f.tellg();
-            while (std::getline(f, next)) {
-                if (next.empty()) break;
-                if (next[0] != ' ' && next[0] != '\t') {
-                    // Unget - need to reprocess this line
-                    // Since we can't unget easily with getline, store position and reset
-                    f.clear();
-                    f.seekg(pos);
-                    break;
-                }
-                full_val += next;
-                pos = f.tellg();
-            }
-            e.exec = full_val;
-        } else if (base == "Categories" && e.categories.empty()) {
-            e.categories = val;
-        } else if (base == "Keywords" && e.keywords.empty()) {
-            e.keywords = semicolon_to_space(val);
-        } else if (base == "NoDisplay") {
-            e.no_display = (val == "true");
-        } else if (base == "Hidden") {
-            e.hidden = (val == "true");
-        }
-    }
-    return e;
 }
 
 static std::vector<fs::path> discover_paths() {
@@ -163,22 +131,17 @@ static std::vector<fs::path> discover_paths() {
     if (!home) return paths;
     std::string h(home);
     const char* xdg = getenv("XDG_DATA_HOME");
-    if (xdg) {
-        paths.push_back(fs::path(xdg) / "applications");
-    } else {
-        paths.push_back(fs::path(h) / ".local/share/applications");
-    }
+    if (xdg && xdg[0] != '\0') paths.push_back(fs::path(xdg) / "applications");
+    else paths.push_back(fs::path(h) / ".local/share/applications");
     paths.push_back(fs::path(h) / ".local/share/flatpak/exports/share/applications");
     return paths;
 }
 
 int main() {
-    // Disable C I/O sync for speed
     std::ios::sync_with_stdio(false);
     std::cin.tie(nullptr);
 
     std::unordered_set<std::string> seen;
-
     for (const auto& dir : discover_paths()) {
         if (!fs::exists(dir) || !fs::is_directory(dir)) continue;
         std::error_code ec;
@@ -187,15 +150,12 @@ int main() {
             if (de.path().extension() != ".desktop") continue;
 
             auto entry = parse(de.path());
-            if (entry.no_display || entry.hidden) continue;
-            if (entry.name.empty()) continue;
+            if (entry.no_display || entry.hidden || entry.name.empty()) continue;
 
-            // Deduplicate by Name|DesktopId|Categories|Exec|Keywords
-            std::string fingerprint = entry.name + "|" + entry.desktop_id + "|"
-                                     + entry.categories + "|" + entry.exec + "|"
-                                     + entry.keywords;
-            if (seen.count(fingerprint)) continue;
-            seen.insert(fingerprint);
+            std::string fp = entry.name + "|" + entry.desktop_id + "|"
+                           + entry.categories + "|" + entry.exec + "|" + entry.keywords;
+            if (seen.count(fp)) continue;
+            seen.insert(fp);
 
             std::cout << escape_delim(entry.name) << "|"
                       << escape_delim(entry.desktop_id) << "|"

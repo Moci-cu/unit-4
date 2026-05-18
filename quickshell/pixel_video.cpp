@@ -8,6 +8,8 @@
 // Footprint: ~50KB binary, ~6MB RAM during render (1920×1080), no external libs beyond std C++.
 
 #include <algorithm>
+#include <cerrno>
+#include <climits>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -207,11 +209,11 @@ static int generate_video(int w, int h, int fps, float duration,
     }
 
     // Ensure output dir exists
-    std::string output_path(output);
-    auto slash = output_path.rfind('/');
-    if (slash != std::string::npos) {
+    std::filesystem::path out_path(output);
+    auto parent = out_path.parent_path();
+    if (!parent.empty()) {
         std::error_code ec;
-        std::filesystem::create_directories(output_path.substr(0, slash), ec);
+        std::filesystem::create_directories(parent, ec);
     }
 
     float speed_scale = 60.0f / fps;
@@ -234,7 +236,7 @@ static int generate_video(int w, int h, int fps, float duration,
     int total_frames = static_cast<int>(duration * fps);
 
     // Build ffmpeg command
-    std::string crf, preset, tune;
+    std::string crf, preset;
     if (std::strcmp(quality, "high") == 0)   { crf = "18"; preset = "medium"; }
     else if (std::strcmp(quality, "low") == 0) { crf = "28"; preset = "fast"; }
     else                                       { crf = "23"; preset = "fast"; }
@@ -306,6 +308,10 @@ static int generate_video(int w, int h, int fps, float duration,
         step_simulation(g, waves, speed_scale);
         render_frame(g, w, h, pixels);
         std::fwrite(pixels.data(), 1, pixels.size(), ffmpeg);
+        if (std::ferror(ffmpeg)) {
+            std::fprintf(stderr, "Write error piping to ffmpeg\n");
+            break;
+        }
 
         int pct = 100 * (frame + 1) / total_frames;
         if (pct != last_pct) {
@@ -320,9 +326,14 @@ static int generate_video(int w, int h, int fps, float duration,
 
     fclose(ffmpeg);
 
-    // Wait for child process
+    // Wait for child process (EINTR-safe)
     int status;
-    waitpid(pid, &status, 0);
+    int r;
+    while ((r = waitpid(pid, &status, 0)) < 0 && errno == EINTR) {}
+    if (r < 0) {
+        std::fprintf(stderr, "waitpid failed\n");
+        return 1;
+    }
     if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
         std::fprintf(stderr, "ffmpeg failed (status %d)\n", status);
         return 1;
@@ -344,11 +355,36 @@ static void usage(const char* prog) {
 int main(int argc, char* argv[]) {
     if (argc < 7) { usage(argv[0]); return 1; }
 
-    const char* mode     = argv[1];
-    int         w        = std::atoi(argv[2]);
-    int         h        = std::atoi(argv[3]);
-    int         fps      = std::atoi(argv[4]);
-    float       duration = std::atof(argv[5]);
+    const char* mode = argv[1];
+    char* end = nullptr;
+
+    errno = 0;
+    long lw = std::strtol(argv[2], &end, 10);
+    if (end == argv[2] || *end || errno == ERANGE || lw <= 0 || lw > INT_MAX) {
+        std::fprintf(stderr, "invalid width\n"); return 1;
+    }
+
+    errno = 0;
+    long lh = std::strtol(argv[3], &end, 10);
+    if (end == argv[3] || *end || errno == ERANGE || lh <= 0 || lh > INT_MAX) {
+        std::fprintf(stderr, "invalid height\n"); return 1;
+    }
+
+    errno = 0;
+    long lf = std::strtol(argv[4], &end, 10);
+    if (end == argv[4] || *end || errno == ERANGE || lf <= 0 || lf > INT_MAX) {
+        std::fprintf(stderr, "invalid fps\n"); return 1;
+    }
+
+    errno = 0;
+    float duration = std::strtof(argv[5], &end);
+    if (end == argv[5] || *end || errno == ERANGE || duration <= 0.0f) {
+        std::fprintf(stderr, "invalid duration\n"); return 1;
+    }
+
+    int w   = static_cast<int>(lw);
+    int h   = static_cast<int>(lh);
+    int fps = static_cast<int>(lf);
     const char* output   = argv[6];
     const char* quality  = (argc > 7) ? argv[7] : "medium";
 

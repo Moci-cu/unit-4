@@ -90,10 +90,9 @@ Item {
         { id: "S03", name: "Sleep",            cmd: "__sleep__",     desktopId: "__sleep__",     meta: "systemctl",  keywords: "sleep suspend standby",             icon: "◈", cat: "sys" },
         { id: "S04", name: "Reboot",           cmd: "__reboot__",    desktopId: "__reboot__",    meta: "systemctl",  keywords: "reboot restart",                    icon: "↻", cat: "sys" },
         { id: "S05", name: "Shut Down",        cmd: "__shutdown__",  desktopId: "__shutdown__",  meta: "systemctl",  keywords: "shutdown poweroff halt power off",  icon: "⏻", cat: "sys" },
-        { id: "S06", name: "Kill All Apps", cmd: "__killactive__",desktopId: "__killactive__", meta: "hyprland",   keywords: "kill close terminate workspace apps",icon: "✕", cat: "sys" },
-        { id: "S07", name: "Power: Performance", cmd: "tlpctl performance", desktopId: "tlpctl performance", meta: "tlpctl", keywords: "power performance profile tlpctl", icon: "⬡", cat: "sys" },
-        { id: "S08", name: "Power: Balanced",    cmd: "tlpctl balanced",    desktopId: "tlpctl balanced",    meta: "tlpctl", keywords: "power balanced profile tlpctl",    icon: "⬡", cat: "sys" },
-        { id: "S09", name: "Power: Power-saver", cmd: "tlpctl power-saver", desktopId: "tlpctl power-saver", meta: "tlpctl", keywords: "power saver profile tlpctl",   icon: "⬡", cat: "sys" }
+        { id: "S06", name: "Power: Performance", cmd: "tlpctl performance", desktopId: "tlpctl performance", meta: "tlpctl", keywords: "power performance profile tlpctl", icon: "⬡", cat: "sys" },
+        { id: "S07", name: "Power: Balanced",    cmd: "tlpctl balanced",    desktopId: "tlpctl balanced",    meta: "tlpctl", keywords: "power balanced profile tlpctl",    icon: "⬡", cat: "sys" },
+        { id: "S08", name: "Power: Power-saver", cmd: "tlpctl power-saver", desktopId: "tlpctl power-saver", meta: "tlpctl", keywords: "power saver profile tlpctl",   icon: "⬡", cat: "sys" }
     ]
 
     readonly property var catLabels: ({
@@ -219,8 +218,6 @@ Item {
             Quickshell.execDetached(["systemctl", "reboot"])
         } else if (cmd === "__shutdown__") {
             Quickshell.execDetached(["systemctl", "poweroff"])
-        } else if (cmd === "__killactive__") {
-            root.killActiveApps()
         } else {
             var parts = cmd.trim().split(/\s+/)
             if (parts.length === 0 || parts[0] === "") return
@@ -233,27 +230,6 @@ Item {
         if (!cmd || cmd === "") return
         Quickshell.execDetached(cmd.trim().split(/\s+/))
         root.closeMenu()
-    }
-
-    function killActiveApps() {
-        var vals = Hyprland.toplevels.values
-        var qs = "quickshell"
-        var cmds = []
-        for (var i = 0; i < vals.length; i++) {
-            var t = vals[i]
-            if (!t) continue
-            var tc = t.clazz
-            if (tc && tc.toLowerCase().indexOf(qs) >= 0) continue
-            var addr = t.address
-            if (addr) {
-                var a = String(addr)
-                if (a.indexOf("0x") !== 0) a = "0x" + a
-                cmds.push("dispatch killwindow address:" + a)
-            }
-        }
-        root.closeMenu()
-        if (cmds.length > 0)
-            Quickshell.execDetached(["hyprctl", "--batch", cmds.join("; ")])
     }
 
     property string nightStateFile: Quickshell.env("HOME") + "/.config/quickshell/night-mode.state"
@@ -446,7 +422,7 @@ Item {
                                 }
                                 Text {
                                     anchors { right:parent.right; rightMargin:12; verticalCenter:parent.verticalCenter }
-                                    text: (root.catCounts[modelData] || (modelData === "all" ? root.apps.length + 9 : 0)).toString().padStart(2,"0")
+                                    text: (root.catCounts[modelData] || (modelData === "all" ? root.apps.length + root.specialItems.length : 0)).toString().padStart(2,"0")
                                     font.family:root.ff; font.pixelSize:13; font.letterSpacing:1
                                     color: parent.isActive ? Qt.rgba(214/255,207/255,181/255,0.6) : Qt.rgba(122/255,115/255,88/255,0.5)
                                 }
