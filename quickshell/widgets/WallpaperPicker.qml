@@ -365,8 +365,8 @@ ShellRoot {
                                     asynchronous: true
                                     cache: true
                                     smooth: true
-                                    sourceSize.width: parent.width
-                                    sourceSize.height: parent.height
+                                    sourceSize.width: 320
+                                    sourceSize.height: 200
                                 }
 
                                 // Bandeau avec le nom, visible seulement sur la vignette centrale
