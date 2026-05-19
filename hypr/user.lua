@@ -57,3 +57,10 @@ hl.bind("CTRL + ALT + H", hl.dsp.focus({ direction = "left" }))
 hl.bind("CTRL + ALT + J", hl.dsp.focus({ direction = "down" }))
 hl.bind("CTRL + ALT + K", hl.dsp.focus({ direction = "up" }))
 hl.bind("CTRL + ALT + L", hl.dsp.focus({ direction = "right" }))
+
+-- 3-finger swipe workspace switching
+hl.gesture({
+    fingers   = 3,
+    direction = "horizontal",
+    action    = "workspace",
+})
