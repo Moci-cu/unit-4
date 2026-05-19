@@ -96,7 +96,7 @@ hl.bind(mainMod .. " + Super_L", hl.dsp.exec_cmd("qs ipc call menu toggle"), { d
 
 -- Lock / Sleep
 hl.bind(mainMod .. " + L", hl.dsp.global("quickshell:lock"), { description = "Lock" })
-hl.bind(superShift .. " + L", hl.dsp.exec_cmd("hyprctl dispatch \"hl.dsp.global('quickshell:lock')\" && systemctl suspend"), { description = "Lock then sleep" })
+hl.bind(superShift .. " + L", hl.dsp.exec_cmd("hyprctl dispatch \"hl.dsp.global('quickshell:lock')\" && sleep 3 && systemctl suspend"), { description = "Lock then sleep" })
 
 -- Panels
 hl.bind(mainMod .. " + R", hl.dsp.global("quickshell:syspanelToggle"), { description = "System panel" })
