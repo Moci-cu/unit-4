@@ -1,3 +1,11 @@
 #!/bin/bash
-pgrep -f "lockscreen.qml" && exit 0
-QT_MEDIA_BACKEND=ffmpeg qs -p ~/.config/quickshell/widgets/lockscreen.qml
+# lock.sh — Quickshell NieR lockscreen
+
+# Check if already running
+pgrep -f "lockscreen.qml" >/dev/null 2>&1 && exit 0
+
+# Launch Quickshell lockscreen
+QT_MEDIA_BACKEND=ffmpeg /usr/sbin/qs -p /home/mocicu/.config/quickshell/widgets/lockscreen.qml &
+
+# Give it a moment to spawn
+sleep 0.2
