@@ -223,7 +223,8 @@ Item {
         } else if (cmd === "__logout__") {
             Quickshell.execDetached(["hyprctl", "dispatch", "exit"])
         } else if (cmd === "__sleep__") {
-            Quickshell.execDetached(["systemctl", "suspend"])
+            Quickshell.execDetached([Quickshell.env("HOME") + "/.config/quickshell/lock.sh"])
+            Quickshell.execDetached(["sh", "-c", "sleep 1 && systemctl suspend"])
         } else if (cmd === "__reboot__") {
             Quickshell.execDetached(["systemctl", "reboot"])
         } else if (cmd === "__shutdown__") {
@@ -646,7 +647,7 @@ text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
                                 {l:"DARK",     cmd:"__dark__"},
                                 {l:"COFFEE",   cmd:"__coffee__"},
                                 {l:"LOCK",     cmd:Quickshell.env("HOME")+"/.config/quickshell/lock.sh"},
-                                {l:"SLEEP",    cmd:"systemctl suspend"},
+                                {l:"SLEEP",    cmd:"__sleep_footer__"},
                                 {l:"REBOOT",   cmd:"systemctl reboot"},
                                 {l:"SHUTDOWN", cmd:"systemctl poweroff", danger:true}
                             ]
@@ -683,6 +684,11 @@ text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
                                     if (modelData.cmd === "__night__") root.toggleNightMode()
                                     else if (modelData.cmd === "__dark__") root.toggleDarkMode()
                                     else if (modelData.cmd === "__coffee__") root.toggleCoffeeMode()
+                                    else if (modelData.cmd === "__sleep_footer__") {
+                                        Quickshell.execDetached([Quickshell.env("HOME") + "/.config/quickshell/lock.sh"])
+                                        Quickshell.execDetached(["sh", "-c", "sleep 1 && systemctl suspend"])
+                                        root.closeMenu()
+                                    }
                                     else root.launch(modelData.cmd)
                                 } }
                             }
