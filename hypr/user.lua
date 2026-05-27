@@ -9,30 +9,30 @@ hl.curve("emphasizedAccel", { type = "bezier", points = { { 0.3, 0 }, { 0.8, 0.1
 hl.curve("emphasizedDecel", { type = "bezier", points = { { 0.05, 0.7 }, { 0.1, 1 } } })
 hl.curve("standard", { type = "bezier", points = { { 0.2, 0 }, { 0, 1 } } })
 
-hl.animation({ leaf = "layersIn", enabled = true, speed = 5, bezier = "emphasizedDecel", style = "slide" })
-hl.animation({ leaf = "layersOut", enabled = true, speed = 4, bezier = "emphasizedAccel", style = "slide" })
-hl.animation({ leaf = "fadeLayers", enabled = true, speed = 5, bezier = "standard" })
-hl.animation({ leaf = "windowsIn", enabled = true, speed = 5, bezier = "emphasizedDecel" })
-hl.animation({ leaf = "windowsOut", enabled = true, speed = 3, bezier = "emphasizedAccel" })
-hl.animation({ leaf = "windowsMove", enabled = true, speed = 6, bezier = "standard" })
+hl.animation({ leaf = "layersIn", enabled = false, speed = 5, bezier = "emphasizedDecel", style = "slide" })
+hl.animation({ leaf = "layersOut", enabled = false, speed = 4, bezier = "emphasizedAccel", style = "slide" })
+hl.animation({ leaf = "fadeLayers", enabled = false, speed = 5, bezier = "standard" })
+hl.animation({ leaf = "windowsIn", enabled = false, speed = 5, bezier = "emphasizedDecel" })
+hl.animation({ leaf = "windowsOut", enabled = false, speed = 3, bezier = "emphasizedAccel" })
+hl.animation({ leaf = "windowsMove", enabled = false, speed = 6, bezier = "standard" })
 hl.animation({ leaf = "workspaces", enabled = true, speed = 5, bezier = "standard" })
 hl.animation({
   leaf = "specialWorkspace",
-  enabled = true,
+  enabled = false,
   speed = 4,
   bezier = "specialWorkSwitch",
   style =
   "slidefadevert 15%"
 })
-hl.animation({ leaf = "fade", enabled = true, speed = 6, bezier = "standard" })
-hl.animation({ leaf = "fadeDim", enabled = true, speed = 6, bezier = "standard" })
-hl.animation({ leaf = "border", enabled = true, speed = 6, bezier = "standard" })
+hl.animation({ leaf = "fade", enabled = false, speed = 6, bezier = "standard" })
+hl.animation({ leaf = "fadeDim", enabled = false, speed = 6, bezier = "standard" })
+hl.animation({ leaf = "border", enabled = false, speed = 6, bezier = "standard" })
 
 -- Decoration & animation override
 hl.config({
   decoration = {
     blur = {
-      enabled = true,
+      enabled = false,
       new_optimizations = true,
     },
     shadow = {
@@ -40,7 +40,7 @@ hl.config({
     },
   },
   animations = {
-    enabled = true,
+    enabled = false,
   },
 })
 
@@ -57,3 +57,10 @@ hl.bind("CTRL + ALT + H", hl.dsp.focus({ direction = "left" }))
 hl.bind("CTRL + ALT + J", hl.dsp.focus({ direction = "down" }))
 hl.bind("CTRL + ALT + K", hl.dsp.focus({ direction = "up" }))
 hl.bind("CTRL + ALT + L", hl.dsp.focus({ direction = "right" }))
+
+-- 3-finger swipe workspace switching
+hl.gesture({
+    fingers   = 3,
+    direction = "horizontal",
+    action    = "workspace",
+})

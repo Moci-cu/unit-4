@@ -360,13 +360,15 @@ ShellRoot {
                                 Image {
                                     anchors.fill: parent
                                     anchors.margins: 2
-                                    source: "file://" + root.wallpaperDir + "/" + root.wallpapers[thumb.wIdx]
+                                    source: thumb.absDelta <= 2
+                                        ? encodeURI("file://" + root.wallpaperDir + "/" + root.wallpapers[thumb.wIdx])
+                                        : ""
                                     fillMode: Image.PreserveAspectCrop
                                     asynchronous: true
                                     cache: true
                                     smooth: true
-                                    sourceSize.width: parent.width
-                                    sourceSize.height: parent.height
+                                    sourceSize.width: 640
+                                    sourceSize.height: 400
                                 }
 
                                 // Bandeau avec le nom, visible seulement sur la vignette centrale
