@@ -223,8 +223,7 @@ Item {
         } else if (cmd === "__logout__") {
             Quickshell.execDetached(["hyprctl", "dispatch", "exit"])
         } else if (cmd === "__sleep__") {
-            Quickshell.execDetached([Quickshell.env("HOME") + "/.config/quickshell/lock.sh"])
-            Quickshell.execDetached(["sh", "-c", "sleep 1 && systemctl suspend"])
+            root.lockAndSuspend()
         } else if (cmd === "__reboot__") {
             Quickshell.execDetached(["systemctl", "reboot"])
         } else if (cmd === "__shutdown__") {
@@ -241,6 +240,11 @@ Item {
         if (!cmd || cmd === "") return
         Quickshell.execDetached(cmd.trim().split(/\s+/))
         root.closeMenu()
+    }
+
+    function lockAndSuspend() {
+        Quickshell.execDetached([Quickshell.env("HOME") + "/.config/quickshell/lock.sh"])
+        Quickshell.execDetached(["sh", "-c", "sleep 1 && systemctl suspend"])
     }
 
     property string nightStateFile: Quickshell.env("HOME") + "/.config/quickshell/night-mode.state"
@@ -433,7 +437,7 @@ Item {
                                 }
                                 Text {
                                     anchors { right:parent.right; rightMargin:12; verticalCenter:parent.verticalCenter }
-                                    text: (root.catCounts[modelData] || (modelData === "all" ? root.apps.length + 9 : 0)).toString().padStart(2,"0")
+                                    text: (root.catCounts[modelData] || (modelData === "all" ? root.apps.length + root.specialItems.length : 0)).toString().padStart(2,"0")
                                     font.family:root.ff; font.pixelSize:13; font.letterSpacing:1
                                     color: parent.isActive ? Qt.rgba(214/255,207/255,181/255,0.6) : Qt.rgba(122/255,115/255,88/255,0.5)
                                 }
@@ -685,8 +689,7 @@ text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
                                     else if (modelData.cmd === "__dark__") root.toggleDarkMode()
                                     else if (modelData.cmd === "__coffee__") root.toggleCoffeeMode()
                                     else if (modelData.cmd === "__sleep_footer__") {
-                                        Quickshell.execDetached([Quickshell.env("HOME") + "/.config/quickshell/lock.sh"])
-                                        Quickshell.execDetached(["sh", "-c", "sleep 1 && systemctl suspend"])
+                                        root.lockAndSuspend()
                                         root.closeMenu()
                                     }
                                     else root.launch(modelData.cmd)
