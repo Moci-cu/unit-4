@@ -9,7 +9,7 @@ pragma ComponentBehavior: Bound
 Item {
     id: root
 
-    readonly property int lw: 780
+    readonly property int lw: 880
     readonly property int lh: 540
     property real screenW: 1920
     property real screenH: 1080
@@ -362,31 +362,28 @@ Item {
                 id: header; width:parent.width; height:52
 
                 Row {
-                    anchors { left:parent.left; right:parent.right; verticalCenter:parent.verticalCenter
-                              leftMargin:28; rightMargin:28 }
-                    Row {
-                        spacing:14; anchors.verticalCenter:parent.verticalCenter
-                        Text { text:"SYSTEM"; font.family:root.ff; font.pixelSize:15; font.letterSpacing:3.5; font.weight:Font.Medium; color:root.inkStrong }
-                        Rectangle { width:24; height:1; color:root.inkSoft; anchors.verticalCenter:parent.verticalCenter }
-                        Text { text:"システム"; font.family:root.ff; font.pixelSize:14; font.letterSpacing:2; color:root.inkSoft }
-                    }
-                    Item { width:parent.width - 340; height:1 }
-                    Row {
-                        spacing:14; anchors.verticalCenter:parent.verticalCenter
-                        Item {
-                            width:120; height:16; clip:true
-                            Text {
-                                id:lhTick
-                                text: root.clockStr + " · " + root.apps.length + " APPS · "
-                                font.family:root.ff; font.pixelSize:13; font.letterSpacing:1.5; color:root.inkSoft; y:2
-                                NumberAnimation on x {
-                                    from:120; to:-lhTick.implicitWidth
-                                    duration:12000; loops:Animation.Infinite; running:root.menuOpen
-                                }
+                    anchors { left:parent.left; verticalCenter:parent.verticalCenter; leftMargin:28 }
+                    spacing:14
+                    Text { text:"SYSTEM"; font.family:root.ff; font.pixelSize:15; font.letterSpacing:3.5; font.weight:Font.Medium; color:root.inkStrong }
+                    Rectangle { width:24; height:1; color:root.inkSoft; anchors.verticalCenter:parent.verticalCenter }
+                    Text { text:"システム"; font.family:root.ff; font.pixelSize:14; font.letterSpacing:2; color:root.inkSoft }
+                }
+                Row {
+                    anchors { right:parent.right; verticalCenter:parent.verticalCenter; rightMargin:28 }
+                    spacing:14
+                    Item {
+                        width:120; height:16; clip:true
+                        Text {
+                            id:lhTick
+                            text: root.clockStr + " · " + root.apps.length + " APPS · "
+                            font.family:root.ff; font.pixelSize:13; font.letterSpacing:1.5; color:root.inkSoft; y:2
+                            NumberAnimation on x {
+                                from:120; to:-lhTick.implicitWidth
+                                duration:12000; loops:Animation.Infinite; running:root.menuOpen
                             }
                         }
-                        Text { text:"SESSION 0471"; font.family:root.ff; font.pixelSize:13; font.letterSpacing:2.5; color:root.inkSoft }
                     }
+                    Text { text:"SESSION 0471"; font.family:root.ff; font.pixelSize:13; font.letterSpacing:2.5; color:root.inkSoft }
                 }
                 Rectangle { anchors.bottom:parent.bottom; width:parent.width; height:1; color:root.lineSoft }
             }
@@ -399,7 +396,7 @@ Item {
                 width: parent.width
 
                 Item {
-                    id:sidebar; width:160; height:parent.height
+                    id:sidebar; width:180; height:parent.height
                     Rectangle { anchors.right:parent.right; width:1; height:parent.height; color:root.lineSoft }
                     Column {
                         anchors { top:parent.top; topMargin:16 }
@@ -409,7 +406,7 @@ Item {
                             model: root.catKeys
                             delegate: Item {
                                 required property string modelData
-                                width:160; height:34
+                                width:180; height:34
                                 property bool isActive: root.currentCat === modelData
 
                                 Rectangle {
@@ -566,9 +563,8 @@ Item {
 
                                 Row {
                                     anchors {
-                                        left:parent.left; right:parent.right; verticalCenter:parent.verticalCenter
+                                        left:parent.left; verticalCenter:parent.verticalCenter
                                         leftMargin:  appMA.containsMouse||appDelegate.isFocused ? 32 : 24
-                                        rightMargin: 24
                                     }
                                     spacing:14
                                     Behavior on anchors.leftMargin { NumberAnimation { duration:180; easing.type:Easing.OutQuart } }
@@ -604,17 +600,20 @@ Item {
                                             Behavior on color { ColorAnimation { duration:120 } }
                                         }
                                     }
-                                    Item { width:appList.width-310; height:1 }
+                                }
+                                Row {
+                                    anchors { right:parent.right; verticalCenter:parent.verticalCenter; rightMargin:24 }
+                                    spacing:5
                                     Text {
                                         anchors.verticalCenter:parent.verticalCenter
                                         text:(root.catLabels[modelData.cat]||modelData.cat).toUpperCase()
-font.family:root.ff; font.pixelSize:13; font.letterSpacing:2
+                                        font.family:root.ff; font.pixelSize:13; font.letterSpacing:2
                                         color: appMA.containsMouse||appDelegate.isFocused ? Qt.rgba(214/255,207/255,181/255,0.4) : root.inkSoft
                                         Behavior on color { ColorAnimation { duration:120 } }
                                     }
                                     Text {
                                         anchors.verticalCenter:parent.verticalCenter
-text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
+                                        text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
                                         opacity: appMA.containsMouse||appDelegate.isFocused ? 1 : 0
                                         Behavior on opacity { NumberAnimation { duration:120 } }
                                     }
@@ -641,75 +640,72 @@ text:"▸"; font.family:root.ff; font.pixelSize:18; color:root.accent
                 id:footer; anchors.bottom:parent.bottom; width:parent.width; height:44
                 Rectangle { anchors.top:parent.top; width:parent.width; height:1; color:root.lineSoft }
                 Row {
-                    anchors { left:parent.left; right:parent.right; verticalCenter:parent.verticalCenter
-                              leftMargin:28; rightMargin:28 }
-                    Row {
-                        spacing:0
-                        Repeater {
-                            model:[
-                                {l:"NIGHT",    cmd:"__night__"},
-                                {l:"DARK",     cmd:"__dark__"},
-                                {l:"COFFEE",   cmd:"__coffee__"}
-                            ]
-                            delegate: Item {
-                                required property var modelData
-                                required property int index
-                                height:44; width:faLbl.implicitWidth+24
-                                Rectangle {
-                                    visible:index>0
-                                    anchors{left:parent.left;top:parent.top;bottom:parent.bottom}
-                                    width:1; color:root.lineSoft
-                                }
-                                Text {
-                                    id:faLbl; anchors.centerIn:parent
-                                    text: modelData.cmd === "__dark__" ? (Theme.darkMode ? "LIGHT" : "DARK") : modelData.l; font.family:root.ff; font.pixelSize:13; font.letterSpacing:2.5; font.weight:Font.Bold
-                                    color: {
-                                        if (modelData.cmd === "__night__" && root.nightMode) return root.accent
-                                        if (modelData.cmd === "__coffee__" && root.coffeeMode) return root.accent
-                                        return faMA.containsMouse ? (modelData.danger===true ? root.accent : root.inkStrong) : root.inkSoft
-                                    }
-                                    Behavior on color { ColorAnimation { duration:150 } }
-                                }
-                                Rectangle {
-                                    anchors{bottom:parent.bottom;horizontalCenter:parent.horizontalCenter;bottomMargin:6}
-                                    width: {
-                                        if (modelData.cmd === "__night__" && root.nightMode) return faLbl.implicitWidth
-                                        if (modelData.cmd === "__coffee__" && root.coffeeMode) return faLbl.implicitWidth
-                                        return faMA.containsMouse?faLbl.implicitWidth:0
-                                    }
-                                    height:1; color:root.accent
-                                    Behavior on width { NumberAnimation { duration:200; easing.type:Easing.OutQuart } }
-                                }
-                                MouseArea { id:faMA; anchors.fill:parent; hoverEnabled:true; onClicked: {
-                                    if (modelData.cmd === "__night__") root.toggleNightMode()
-                                    else if (modelData.cmd === "__dark__") root.toggleDarkMode()
-                                    else if (modelData.cmd === "__coffee__") root.toggleCoffeeMode()
-                                    else root.launch(modelData.cmd)
-                                } }
+                    anchors { left:parent.left; verticalCenter:parent.verticalCenter; leftMargin:28 }
+                    spacing:0
+                    Repeater {
+                        model:[
+                            {l:"NIGHT",    cmd:"__night__"},
+                            {l:"DARK",     cmd:"__dark__"},
+                            {l:"COFFEE",   cmd:"__coffee__"}
+                        ]
+                        delegate: Item {
+                            required property var modelData
+                            required property int index
+                            height:44; width:faLbl.implicitWidth+24
+                            Rectangle {
+                                visible:index>0
+                                anchors{left:parent.left;top:parent.top;bottom:parent.bottom}
+                                width:1; color:root.lineSoft
                             }
+                            Text {
+                                id:faLbl; anchors.centerIn:parent
+                                text: modelData.cmd === "__dark__" ? (Theme.darkMode ? "LIGHT" : "DARK") : modelData.l; font.family:root.ff; font.pixelSize:13; font.letterSpacing:2.5; font.weight:Font.Bold
+                                color: {
+                                    if (modelData.cmd === "__night__" && root.nightMode) return root.accent
+                                    if (modelData.cmd === "__coffee__" && root.coffeeMode) return root.accent
+                                    return faMA.containsMouse ? (modelData.danger===true ? root.accent : root.inkStrong) : root.inkSoft
+                                }
+                                Behavior on color { ColorAnimation { duration:150 } }
+                            }
+                            Rectangle {
+                                anchors{bottom:parent.bottom;horizontalCenter:parent.horizontalCenter;bottomMargin:6}
+                                width: {
+                                    if (modelData.cmd === "__night__" && root.nightMode) return faLbl.implicitWidth
+                                    if (modelData.cmd === "__coffee__" && root.coffeeMode) return faLbl.implicitWidth
+                                    return faMA.containsMouse?faLbl.implicitWidth:0
+                                }
+                                height:1; color:root.accent
+                                Behavior on width { NumberAnimation { duration:200; easing.type:Easing.OutQuart } }
+                            }
+                            MouseArea { id:faMA; anchors.fill:parent; hoverEnabled:true; onClicked: {
+                                if (modelData.cmd === "__night__") root.toggleNightMode()
+                                else if (modelData.cmd === "__dark__") root.toggleDarkMode()
+                                else if (modelData.cmd === "__coffee__") root.toggleCoffeeMode()
+                                else root.launch(modelData.cmd)
+                            } }
                         }
                     }
-                    Text {
-                        visible: root.tlpProfile !== ""
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "TLP: " + root.tlpProfile.toUpperCase()
-                        font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 2.5; font.weight: Font.Black; color: root.inkSoft; opacity: 0.85
-                    }
-                    Item { width:parent.width-380; height:1 }
-                    Row {
-                        spacing:14; anchors.verticalCenter:parent.verticalCenter
-                        Repeater {
-                            model:[["↑↓","NAV"],["↵","OPEN"],["ESC","CLOSE"]]
-                            Row {
-                                required property var modelData
-                                spacing:5; anchors.verticalCenter:parent.verticalCenter
-                                Rectangle {
-                                    width:kbdT.implicitWidth+8; height:16; color:"transparent"
-                                    border.color:root.lineSoft; border.width:1
-                                    Text { id:kbdT; anchors.centerIn:parent; text:modelData[0]; font.family:root.ff; font.pixelSize:13; font.letterSpacing:1; color:root.ink }
-                                }
-                                Text { text:modelData[1]; anchors.verticalCenter:parent.verticalCenter; font.family:root.ff; font.pixelSize:13; font.letterSpacing:2; color:root.inkSoft }
+                }
+                Text {
+                    visible: root.tlpProfile !== ""
+                    anchors { left:parent.left; verticalCenter:parent.verticalCenter; leftMargin:320 }
+                    text: "TLP: " + root.tlpProfile.toUpperCase()
+                    font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 2.5; font.weight: Font.Black; color: root.inkSoft; opacity: 0.85
+                }
+                Row {
+                    anchors { right:parent.right; verticalCenter:parent.verticalCenter; rightMargin:28 }
+                    spacing:14
+                    Repeater {
+                        model:[["↑↓","NAV"],["↵","OPEN"],["ESC","CLOSE"]]
+                        Row {
+                            required property var modelData
+                            spacing:5; anchors.verticalCenter:parent.verticalCenter
+                            Rectangle {
+                                width:kbdT.implicitWidth+8; height:16; color:"transparent"
+                                border.color:root.lineSoft; border.width:1
+                                Text { id:kbdT; anchors.centerIn:parent; text:modelData[0]; font.family:root.ff; font.pixelSize:13; font.letterSpacing:1; color:root.ink }
                             }
+                            Text { text:modelData[1]; anchors.verticalCenter:parent.verticalCenter; font.family:root.ff; font.pixelSize:13; font.letterSpacing:2; color:root.inkSoft }
                         }
                     }
                 }
