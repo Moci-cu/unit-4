@@ -51,6 +51,15 @@ ShellRoot {
 
     Timer { id:errTimer; interval:800; repeat:false; onTriggered: root.lockError=false }
 
+    // Auto-suspend after 5 minutes on lockscreen
+    Timer {
+        id: autoSuspendTimer
+        interval: 300000
+        repeat: false
+        running: true
+        onTriggered: Quickshell.execDetached(["systemctl", "suspend"])
+    }
+
     function doAuth() {
         if (root.lockPending || root.lockInput === "") return
         root.lockPending = true
@@ -58,6 +67,7 @@ ShellRoot {
     }
 
     function doHide() {
+        autoSuspendTimer.stop()
         root.hiding = true
     }
 
