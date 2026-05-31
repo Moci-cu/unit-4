@@ -19,6 +19,7 @@ Item {
     property string artist: ""
     property real duration: 0
     property real position: 0
+    property real lookAhead: 0.8
     property int selectedId: 0
 
     property bool loading: false
@@ -157,7 +158,7 @@ Item {
         let idx = -1;
         while (lo <= hi) {
             const mid = (lo + hi) >> 1;
-            if (root.lines[mid].time <= positionSeconds) {
+            if (root.lines[mid].time <= positionSeconds + root.lookAhead) {
                 idx = mid;
                 lo = mid + 1;
             } else {
@@ -520,23 +521,10 @@ Item {
                     root.error = root.lines.length === 0 && root.instrumental ? "Instrumental" : "";
                     root.loadedKey = requestKey;
 
-                    root.instrumental = best.instrumental ?? false;
-                    root.lines = root.parseSyncedLyrics(best.syncedLyrics ?? "");
-
-                    if (root.lines.length === 0 && !root.instrumental) {
-                        root.attempt += 1;
-                        root.fetchAttempt(requestId);
-                        return;
-                    }
-
                     root.setCache(root.queryTitle, root.queryArtist, root.queryDuration, {
                         instrumental: root.instrumental,
                         lines: root.lines
                     });
-
-                    root.loading = false;
-                    root.error = root.lines.length === 0 && root.instrumental ? "Instrumental" : "";
-                    root.loadedKey = requestKey;
                 } catch (e) {
                     root.attempt += 1;
                     root.fetchAttempt(requestId);
