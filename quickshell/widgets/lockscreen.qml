@@ -292,7 +292,7 @@ ShellRoot {
 
                         // Wipe curtain
                         Rectangle {
-                            id:wipeCurtain;anchors.fill:parent;color:"#c8b89a";z:50
+                            id:wipeCurtain;anchors.fill:parent;color:"#e0c888";z:50
                             transform:Scale{id:wipeScale;xScale:1;yScale:1;origin.x:0;origin.y:0}
                         }
 

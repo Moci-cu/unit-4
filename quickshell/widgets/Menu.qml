@@ -572,18 +572,18 @@ Item {
                                     Text {
                                         anchors.verticalCenter:parent.verticalCenter
                                         text:modelData.id; width:22; font.family:root.ff; font.pixelSize:13; font.letterSpacing:1.5
-                                        color: appMA.containsMouse||appDelegate.isFocused ? Qt.rgba(214/255,207/255,181/255,0.5) : root.inkSoft
+                                        color: appMA.containsMouse||appDelegate.isFocused ? Qt.rgba(26/255,24/255,20/255,0.6) : root.inkSoft
                                         Behavior on color { ColorAnimation { duration:120 } }
                                     }
                                     Rectangle {
                                         anchors.verticalCenter:parent.verticalCenter
                                         width:28; height:28; color:"transparent"
-                                        border.color: appMA.containsMouse||appDelegate.isFocused ? Qt.rgba(214/255,207/255,181/255,0.8) : root.ink
+                                        border.color: appMA.containsMouse||appDelegate.isFocused ? Qt.rgba(26/255,24/255,20/255,0.8) : root.ink
                                         border.width:1
                                         Behavior on border.color { ColorAnimation { duration:120 } }
                                         Text {
                                             anchors.centerIn:parent; text:modelData.icon; font.family:root.ff; font.pixelSize:16
-                                            color: appMA.containsMouse||appDelegate.isFocused ? Qt.rgba(214/255,207/255,181/255,0.9) : root.ink
+                                            color: appMA.containsMouse||appDelegate.isFocused ? Qt.rgba(26/255,24/255,20/255,0.9) : root.ink
                                             Behavior on color { ColorAnimation { duration:120 } }
                                         }
                                     }
@@ -591,12 +591,12 @@ Item {
                                         anchors.verticalCenter:parent.verticalCenter; spacing:2
                                         Text {
                                             text:modelData.name; font.family:root.ff; font.pixelSize:16; font.letterSpacing:1.2; font.weight:Font.Medium
-                                            color: appMA.containsMouse||appDelegate.isFocused ? Qt.rgba(214/255,207/255,181/255,1) : root.ink
+                                            color: appMA.containsMouse||appDelegate.isFocused ? root.paper : root.ink
                                             Behavior on color { ColorAnimation { duration:120 } }
                                         }
                                         Text {
                                             text:modelData.meta; font.family:root.ff; font.pixelSize:13; font.letterSpacing:1.5
-                                            color: appMA.containsMouse||appDelegate.isFocused ? Qt.rgba(214/255,207/255,181/255,0.5) : root.inkSoft
+                                            color: appMA.containsMouse||appDelegate.isFocused ? Qt.rgba(26/255,24/255,20/255,0.8) : root.inkSoft
                                             Behavior on color { ColorAnimation { duration:120 } }
                                         }
                                     }
@@ -608,7 +608,7 @@ Item {
                                         anchors.verticalCenter:parent.verticalCenter
                                         text:(root.catLabels[modelData.cat]||modelData.cat).toUpperCase()
                                         font.family:root.ff; font.pixelSize:13; font.letterSpacing:2
-                                        color: appMA.containsMouse||appDelegate.isFocused ? Qt.rgba(214/255,207/255,181/255,0.4) : root.inkSoft
+                                        color: appMA.containsMouse||appDelegate.isFocused ? Qt.rgba(26/255,24/255,20/255,0.7) : root.inkSoft
                                         Behavior on color { ColorAnimation { duration:120 } }
                                     }
                                     Text {

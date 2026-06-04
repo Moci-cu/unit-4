@@ -353,7 +353,7 @@ ShellRoot {
                             Rectangle {
                                 anchors.fill: parent
                                 color: "#0f0d0a"
-                                border.color: thumb.absDelta === 0 ? "#c8b89a" : "#463f2e"
+                                border.color: thumb.absDelta === 0 ? "#e0c888" : "#463f2e"
                                 border.width: thumb.absDelta === 0 ? 2 : 1
                                 Behavior on border.color { ColorAnimation { duration:260 } }
 
@@ -384,7 +384,7 @@ ShellRoot {
                                         text: root.wallpapers[thumb.wIdx]
                                         font.family: "Ndot 57"
                                         font.pixelSize: 8
-                                        color: "#c8b89a"
+                                        color: "#e0c888"
                                     }
                                 }
                             }

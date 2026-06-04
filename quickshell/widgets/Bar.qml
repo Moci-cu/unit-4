@@ -25,17 +25,17 @@ Item {
     }
 
     readonly property color bg:        Qt.rgba(11/255, 10/255, 9/255, 0.92)
-    readonly property color inkDim:    Qt.rgba(200/255,184/255,154/255,0.4)
-    readonly property color sep:       Qt.rgba(200/255,184/255,154/255,0.08)
-    readonly property color borderBot: Qt.rgba(200/255,184/255,154/255,0.15)
+    readonly property color inkDim:    Qt.rgba(224/255,200/255,136/255,0.4)
+    readonly property color sep:       Qt.rgba(224/255,200/255,136/255,0.08)
+    readonly property color borderBot: Qt.rgba(224/255,200/255,136/255,0.15)
     readonly property color cpuColor:  "#c87060"
     readonly property color memColor:  "#6090c8"
     readonly property color netColor:  "#60a880"
-    readonly property color wsGold:    "#c8b89a"
-    readonly property color wsDim:     Qt.rgba(200/255,184/255,154/255,0.3)
-    readonly property color wsHover:   Qt.rgba(200/255,184/255,154/255,0.7)
-    readonly property color wsHoverBg: Qt.rgba(200/255,184/255,154/255,0.05)
-    readonly property color wsAppLine: Qt.rgba(200/255,184/255,154/255,0.5)
+    readonly property color wsGold:    "#e0c888"
+    readonly property color wsDim:     Qt.rgba(224/255,200/255,136/255,0.3)
+    readonly property color wsHover:   Qt.rgba(224/255,200/255,136/255,0.7)
+    readonly property color wsHoverBg: Qt.rgba(224/255,200/255,136/255,0.05)
+    readonly property color wsAppLine: Qt.rgba(224/255,200/255,136/255,0.5)
 
     readonly property int barHeight: 28
     readonly property int wsDotWidth: 28
@@ -436,7 +436,7 @@ Item {
                             font.family: "Ndot 57"
                             font.pixelSize: 14
                             font.letterSpacing: 2
-                            color: "#c8b89a"
+                            color: "#e0c888"
                         }
                     }
                 }

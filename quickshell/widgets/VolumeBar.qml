@@ -24,7 +24,7 @@ ShellRoot {
     readonly property int segActiveH: 5
 
     readonly property color colFilled: "#a89a7e"
-    readonly property color colEmpty:  "#c8b89a"
+    readonly property color colEmpty:  "#e0c888"
     readonly property color colBg:     "#0f0d0a"
 
     property real volume: -1
