@@ -640,6 +640,7 @@ Item {
                 id:footer; anchors.bottom:parent.bottom; width:parent.width; height:44
                 Rectangle { anchors.top:parent.top; width:parent.width; height:1; color:root.lineSoft }
                 Row {
+                    id: footerActions
                     anchors { left:parent.left; verticalCenter:parent.verticalCenter; leftMargin:28 }
                     spacing:0
                     Repeater {
@@ -688,7 +689,7 @@ Item {
                 }
                 Text {
                     visible: root.tlpProfile !== ""
-                    anchors { left:parent.left; verticalCenter:parent.verticalCenter; leftMargin:320 }
+                    anchors { left:footerActions.right; verticalCenter:parent.verticalCenter; leftMargin:8 }
                     text: "TLP: " + root.tlpProfile.toUpperCase()
                     font.family: root.ff; font.pixelSize: 13; font.letterSpacing: 2.5; font.weight: Font.Black; color: root.inkSoft; opacity: 0.85
                 }
