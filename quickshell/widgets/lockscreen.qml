@@ -51,6 +51,15 @@ ShellRoot {
 
     Timer { id:errTimer; interval:800; repeat:false; onTriggered: root.lockError=false }
 
+    // Auto-suspend after 5 minutes on lockscreen
+    Timer {
+        id: autoSuspendTimer
+        interval: 300000
+        repeat: false
+        running: true
+        onTriggered: Quickshell.execDetached(["systemctl", "suspend"])
+    }
+
     function doAuth() {
         if (root.lockPending || root.lockInput === "") return
         root.lockPending = true
@@ -58,6 +67,7 @@ ShellRoot {
     }
 
     function doHide() {
+        autoSuspendTimer.stop()
         root.hiding = true
     }
 
@@ -282,7 +292,7 @@ ShellRoot {
 
                         // Wipe curtain
                         Rectangle {
-                            id:wipeCurtain;anchors.fill:parent;color:"#c8b89a";z:50
+                            id:wipeCurtain;anchors.fill:parent;color:"#e0c888";z:50
                             transform:Scale{id:wipeScale;xScale:1;yScale:1;origin.x:0;origin.y:0}
                         }
 

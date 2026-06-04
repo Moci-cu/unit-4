@@ -49,7 +49,7 @@ Item {
             ]
         },
         {
-            name:  "2B // YoRHa", color: "#c8b89a",
+            name:  "2B // YoRHa", color: "#e0c888",
             src:   Qt.resolvedUrl("../assets/2b.gif"),
             lines: [
                 "Les émotions sont interdites. Pourtant... je veille.",
@@ -145,7 +145,7 @@ Item {
                 border.color: Qt.rgba(200/255,184/255,154/255,0.15); border.width: 1
                 anchors.verticalCenter: parent.verticalCenter
                 Text { anchors.centerIn: parent; text: "‹"; font.pixelSize: 18
-                       color: maL.containsMouse ? "#c8b89a" : Qt.rgba(200/255,184/255,154/255,0.35)
+                        color: maL.containsMouse ? "#e0c888" : Qt.rgba(224/255,200/255,136/255,0.35)
                        Behavior on color { ColorAnimation { duration: 100 } } }
                 MouseArea { id: maL; anchors.fill: parent; hoverEnabled: true; onClicked: root.navigate(-1) }
             }
@@ -238,7 +238,7 @@ Item {
                 border.color: Qt.rgba(200/255,184/255,154/255,0.15); border.width: 1
                 anchors.verticalCenter: parent.verticalCenter
                 Text { anchors.centerIn: parent; text: "›"; font.pixelSize: 18
-                       color: maR.containsMouse ? "#c8b89a" : Qt.rgba(200/255,184/255,154/255,0.35)
+                        color: maR.containsMouse ? "#e0c888" : Qt.rgba(224/255,200/255,136/255,0.35)
                        Behavior on color { ColorAnimation { duration: 100 } } }
                 MouseArea { id: maR; anchors.fill: parent; hoverEnabled: true; onClicked: root.navigate(1) }
             }
@@ -261,7 +261,7 @@ Item {
                 model: root.companions.length
                 Rectangle {
                     width: 5; height: 5
-                    color: index === root.currentIdx ? "#c8b89a" : Qt.rgba(200/255,184/255,154/255,0.15)
+                     color: index === root.currentIdx ? "#e0c888" : Qt.rgba(224/255,200/255,136/255,0.15)
                     Behavior on color { ColorAnimation { duration: 100 } }
                     MouseArea { anchors.fill: parent
                         onClicked: if (index !== root.currentIdx) root.navigate(index > root.currentIdx ? 1 : -1) }

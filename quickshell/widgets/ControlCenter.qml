@@ -112,9 +112,24 @@ ShellRoot {
         }
         // Bluetooth
         if (key === "top.bluetooth") {
-            var acts2 = [{key:"toggle", label: btEnabled ? "Disable Bluetooth" : "Enable Bluetooth"}]
+            var toggleLabel = btEnabled ? "Disable Bluetooth" : (btBlocked ? "Unblock + Enable Bluetooth" : "Enable Bluetooth")
+            var acts2 = [{key:"toggle", label: btBusy ? "Bluetooth working..." : toggleLabel}]
+            if (!root.btAdapter) {
+                acts2.push({key:"noop", label:"No Bluetooth adapter"})
+                return acts2
+            }
+            if (root.btError !== "") {
+                acts2.push({key:"noop", label:"! " + root.btError})
+            }
+            if (root.btBlocked) {
+                acts2.push({key:"noop", label:"Blocked by rfkill"})
+                return acts2
+            }
             if (btEnabled) {
-                acts2.push({key: "scan", label: (root.btAdapter && root.btAdapter.discovering) ? "◉ Scanning… (tap to stop)" : "⌕ Scan for new devices"})
+                acts2.push({key: "scan", label: root.btScanBusy ? "Scan working..." : (root.btDiscovering ? "◉ Scanning... (tap to stop)" : "⌕ Scan for new devices")})
+                if (root.btDeviceBusy) {
+                    acts2.push({key:"noop", label:"Pair/connect working..."})
+                }
                 for (var j = 0; j < btDevices.length; j++) {
                     var d = btDevices[j]
                     var prefix = d.connected ? "✓ " : (d.paired ? "· " : "+ ")
@@ -227,7 +242,11 @@ ShellRoot {
             return "Enabled · Scanning"
         }
         if (key === "top.bluetooth") {
-            if (!btEnabled) return "Disabled"
+            if (!root.btAdapter) return "No adapter"
+            if (btBusy) return "Working..."
+            if (btError !== "") return btError
+            if (btBlocked) return "Blocked"
+            if (!btEnabled) return btStateText || "Disabled"
             var connected = btDevices.filter(function(d){return d.connected})
             if (connected.length) return "Connected · " + connected[0].name
             return "Enabled · " + btDevices.length + " device" + (btDevices.length !== 1 ? "s" : "")
@@ -310,16 +329,28 @@ ShellRoot {
     }
     onWifiCurrentSSIDChanged: { if (root.open && root.slot === "top") rebuildWifi() }
 
-    // ── Données système : Bluetooth (native Quickshell.Bluetooth) ──
-    readonly property bool btEnabled: Bluetooth.defaultAdapter ? Bluetooth.defaultAdapter.enabled : false
+    // ── Données système : Bluetooth (native Quickshell.Bluetooth + CLI fallback) ──
     readonly property var btAdapter: Bluetooth.defaultAdapter
+    readonly property bool btEnabled: root.btAdapter ? root.btAdapter.enabled : false
+    readonly property bool btBlocked: root.btAdapter ? root.btAdapter.state === BluetoothAdapterState.Blocked : false
+    readonly property bool btDisabled: root.btAdapter ? root.btAdapter.state === BluetoothAdapterState.Disabled : true
+    readonly property bool btDiscovering: root.btAdapter ? root.btAdapter.discovering : false
+    readonly property string btStateText: root.btAdapter ? BluetoothAdapterState.toString(root.btAdapter.state) : "No adapter"
     property var    btDevices: []
-    property bool   btScanning: false
+    property bool   btBusy: false
+    property bool   btScanBusy: false
+    property bool   btDeviceBusy: false
+    property string btError: ""
+    property bool   btTargetEnabled: false
+    property bool   btFallbackArmed: false
     property string wifiPasswordInput: ""
 
     function rebuildBt() {
         if (!root.btAdapter) { root.btDevices = []; return }
-        var devs = root.btAdapter.devices ? root.btAdapter.devices.values : []
+        var devs = []
+        if (root.btAdapter.devices) {
+            devs = root.btAdapter.devices.values || root.btAdapter.devices
+        }
         var result = []
         for (var i = 0; i < devs.length; i++) {
             var d = devs[i]
@@ -345,7 +376,20 @@ ShellRoot {
         }
         return null
     }
-    onBtEnabledChanged: { if (root.open && root.slot === "top") rebuildBt() }
+
+    function isValidBtMac(mac) {
+        return /^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(mac)
+    }
+    onBtEnabledChanged: {
+        if (root.open && root.slot === "top") rebuildBt()
+        if (btFallbackArmed && btEnabled === btTargetEnabled) {
+            btFallbackArmed = false
+            btBusy = false
+            btToggleFallbackTimer.stop()
+            refreshTimer.restart()
+        }
+    }
+    onBtDiscoveringChanged: { if (root.open && root.slot === "top") rebuildBt() }
 
     // ── Polling léger quand le panneau est ouvert (BT + Audio natifs) ──
     Timer {
@@ -670,18 +714,133 @@ ShellRoot {
         }
     }
 
-    // Process pour scan BT
+    function startBtRefreshBurst() {
+        btRepeatRefresh.count = 0
+        btRepeatRefresh.running = true
+    }
+
+    function runBtPowerFallback(enable, unblock) {
+        root.btFallbackArmed = false
+        root.btBusy = true
+        root.btError = ""
+        btPowerProc.command = ["sh","-c",
+            (enable && unblock ? "rfkill unblock bluetooth 2>/dev/null || true; " : "") +
+            "bluetoothctl power " + (enable ? "on" : "off")]
+        btPowerProc.running = true
+    }
+
+    Timer {
+        id: btToggleFallbackTimer
+        interval: 900
+        repeat: false
+        onTriggered: {
+            if (!root.btFallbackArmed) return
+            if (!root.btAdapter) {
+                root.btFallbackArmed = false
+                root.btBusy = false
+                root.btError = "No Bluetooth adapter"
+                return
+            }
+            if (root.btEnabled === root.btTargetEnabled) {
+                root.btFallbackArmed = false
+                root.btBusy = false
+                refreshTimer.restart()
+                return
+            }
+            root.runBtPowerFallback(root.btTargetEnabled, root.btTargetEnabled && root.btBlocked)
+        }
+    }
+
+    // Process fallback pour power/unblock BT
+    Process {
+        id: btPowerProc
+        command: ["sh","-c","true"]
+        running: false
+        stdout: StdioCollector {}
+        stderr: StdioCollector {
+            onStreamFinished: {
+                var err = this.text.trim()
+                if (err !== "") root.btError = err.substring(0, 80)
+            }
+        }
+        onRunningChanged: {
+            if (!running) {
+                root.btBusy = false
+                refreshTimer.restart()
+            }
+        }
+    }
+
+    // Process fallback pour scan BT
     Process {
         id: btScanProc
-        command: ["sh","-c","bluetoothctl --timeout 30 scan on"]
+        command: ["sh","-c","true"]
         running: false
+        stdout: StdioCollector {}
+        stderr: StdioCollector {
+            onStreamFinished: {
+                var err = this.text.trim()
+                if (err !== "") root.btError = err.substring(0, 80)
+            }
+        }
+        onRunningChanged: {
+            if (!running) {
+                root.btScanBusy = false
+                root.startBtRefreshBurst()
+            }
+        }
     }
+
+    Process {
+        id: btDeviceProc
+        command: ["sh","-c","true"]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var out = this.text.trim()
+                if (out.indexOf("Failed") >= 0 || out.indexOf("not available") >= 0) {
+                    root.btError = out.substring(0, 100)
+                }
+            }
+        }
+        stderr: StdioCollector {
+            onStreamFinished: {
+                var err = this.text.trim()
+                if (err !== "") root.btError = err.substring(0, 100)
+            }
+        }
+        onRunningChanged: {
+            if (!running) {
+                root.btDeviceBusy = false
+                root.startBtRefreshBurst()
+            }
+        }
+    }
+
     // Stop scan automatique après 30s
     Timer {
         id: btScanStopTimer
         interval: 30000
         repeat: false
-        onTriggered: { root.btScanning = false }
+        onTriggered: {
+            if (root.btAdapter && root.btAdapter.discovering) {
+                try { root.btAdapter.discovering = false } catch (e) {
+                    btScanProc.command = ["sh","-c","bluetoothctl scan off"]
+                    btScanProc.running = true
+                }
+            }
+            refreshTimer.restart()
+        }
+    }
+
+    Timer {
+        id: btScanSettleTimer
+        interval: 1500
+        repeat: false
+        onTriggered: {
+            root.btScanBusy = false
+            refreshTimer.restart()
+        }
     }
 
     // Process pour submission du password Wi-Fi (sépare actProc pour capture stderr)
@@ -779,10 +938,72 @@ ShellRoot {
         }
         // ── Bluetooth (native) ──
         else if (slotKey === "top" && subKey === "bluetooth") {
+            if (actionKey === "noop") return
             if (actionKey === "toggle") {
-                if (root.btAdapter) root.btAdapter.enabled = !btEnabled; return
+                if (!root.btAdapter) {
+                    root.btError = "No Bluetooth adapter"
+                    return
+                }
+                root.btError = ""
+                var targetEnabled = !root.btEnabled
+                root.btTargetEnabled = targetEnabled
+                if (targetEnabled) {
+                    root.runBtPowerFallback(true, true)
+                    refreshTimer.restart()
+                    return
+                }
+                try {
+                    root.btAdapter.enabled = targetEnabled
+                    root.btBusy = true
+                    root.btFallbackArmed = true
+                    btToggleFallbackTimer.restart()
+                    refreshTimer.restart()
+                } catch (e) {
+                    root.btError = "Native toggle failed"
+                    root.runBtPowerFallback(targetEnabled, targetEnabled && root.btBlocked)
+                }
+                return
             } else if (actionKey === "scan") {
-                if (root.btAdapter) root.btAdapter.discovering = !btScanning; return
+                if (root.btScanBusy && !root.btDiscovering) return
+                if (!root.btAdapter) {
+                    root.btError = "No Bluetooth adapter"
+                    return
+                }
+                if (root.btBlocked) {
+                    root.btError = "Bluetooth blocked"
+                    return
+                }
+                if (!root.btEnabled) {
+                    root.btError = "Bluetooth disabled"
+                    return
+                }
+                root.btError = ""
+                root.btScanBusy = true
+                if (root.btDiscovering) {
+                    try {
+                        root.btAdapter.discovering = false
+                        btScanStopTimer.stop()
+                        btScanSettleTimer.restart()
+                        refreshTimer.restart()
+                    } catch (e3) {
+                        root.btError = "Native scan stop failed"
+                        btScanProc.command = ["sh","-c","bluetoothctl scan off"]
+                        btScanProc.running = true
+                    }
+                } else {
+                    try {
+                        root.btAdapter.discovering = true
+                        btScanStopTimer.restart()
+                        btScanProc.command = ["sh","-c","bluetoothctl --timeout 8 scan on"]
+                        btScanProc.running = true
+                    } catch (e4) {
+                        root.btError = "Native scan failed"
+                        btScanStopTimer.restart()
+                        btScanProc.command = ["sh","-c","bluetoothctl --timeout 8 scan on"]
+                        btScanProc.running = true
+                    }
+                }
+                return
             }
             var mac = ""
             if (actionKey.indexOf("connect:") === 0) mac = actionKey.substring(8)
@@ -790,15 +1011,56 @@ ShellRoot {
             else if (actionKey.indexOf("pair:") === 0) mac = actionKey.substring(5)
             else if (actionKey.indexOf("remove:") === 0) mac = actionKey.substring(7)
             if (mac) {
-                var d = root.findBtDevice(mac)
-                if (d) {
-                    if (actionKey.indexOf("connect:") === 0) d.connect()
-                    else if (actionKey.indexOf("disconnect:") === 0) d.disconnect()
-                    else if (actionKey.indexOf("pair:") === 0) d.pair()
-                    else if (actionKey.indexOf("remove:") === 0) d.forget()
-                    root.rebuildBt()
+                if (!root.isValidBtMac(mac)) {
+                    root.btError = "Invalid Bluetooth address"
                     return
                 }
+                if (root.btDeviceBusy) return
+                root.btError = ""
+                root.btDeviceBusy = true
+                if (root.btAdapter && root.btAdapter.discovering) {
+                    try { root.btAdapter.discovering = false } catch (e5) {}
+                }
+                btScanStopTimer.stop()
+                if (actionKey.indexOf("pair:") === 0) {
+                    var pairScript = root.xdgConfigHome + "/quickshell/scripts/bt-pair.sh"
+                    cmd =
+                        "( " +
+                        "  if command -v kitty >/dev/null 2>&1; then " +
+                        "    kitty --class qs-bt-pair --title 'Bluetooth Pair' bash " + pairScript + " " + mac + " & " +
+                        "  elif command -v foot >/dev/null 2>&1; then " +
+                        "    foot --app-id qs-bt-pair bash " + pairScript + " " + mac + " & " +
+                        "  elif command -v alacritty >/dev/null 2>&1; then " +
+                        "    alacritty --class qs-bt-pair -e bash " + pairScript + " " + mac + " & " +
+                        "  elif command -v wezterm >/dev/null 2>&1; then " +
+                        "    wezterm start --class qs-bt-pair -- bash " + pairScript + " " + mac + " & " +
+                        "  else notify-send 'Bluetooth' 'No supported terminal found (foot/alacritty/kitty/wezterm)'; fi; " +
+                        "  sleep 0.35; hyprctl dispatch focuswindow '^(qs-bt-pair)$' >/dev/null 2>&1; " +
+                        ") &"
+                    root.btDeviceBusy = false
+                    root.close()
+                } else if (actionKey.indexOf("connect:") === 0) {
+                    btDeviceProc.command = ["sh","-c",
+                        "printf '%s\\n' 'trust " + mac + "' 'connect " + mac + "' 'quit' | bluetoothctl"]
+                } else if (actionKey.indexOf("disconnect:") === 0) {
+                    btDeviceProc.command = ["sh","-c",
+                        "printf '%s\\n' 'disconnect " + mac + "' 'quit' | bluetoothctl"]
+                } else if (actionKey.indexOf("remove:") === 0) {
+                    btDeviceProc.command = ["sh","-c",
+                        "printf '%s\\n' 'disconnect " + mac + "' 'remove " + mac + "' 'quit' | bluetoothctl"]
+                } else {
+                    root.btDeviceBusy = false
+                    return
+                }
+                if (cmd) {
+                    actProc.command = ["sh","-c", cmd]
+                    actProc.running = true
+                    root.startBtRefreshBurst()
+                    return
+                }
+                btDeviceProc.running = true
+                root.startBtRefreshBurst()
+                return
             }
         }
         // ── Audio Output ──
@@ -931,7 +1193,7 @@ ShellRoot {
         onTriggered: {
             root.rebuildBt()
             count += 1
-            if (count >= 6) { running = false; count = 0 }
+            if (count >= 3) { running = false; count = 0 }
         }
     }
 
@@ -2274,7 +2536,7 @@ ShellRoot {
 
         Text {
             id: subTxt
-            property string targetText: si.subItem.label
+            property string targetText: si.subItem && si.subItem.label ? si.subItem.label : ""
             text: targetText
             onTargetTextChanged: subScramble.start()
             anchors.centerIn: parent
@@ -2373,7 +2635,7 @@ ShellRoot {
 
         Text {
             id: btnTxt
-            property string targetText: btn.actionData.label.toUpperCase()
+            property string targetText: btn.actionData && btn.actionData.label ? btn.actionData.label.toUpperCase() : ""
             text: targetText
             onTargetTextChanged: btnScramble.start()
             anchors.left: parent.left
