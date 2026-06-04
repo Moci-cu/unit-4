@@ -444,7 +444,7 @@ Item {
                         }
 
                         Item {
-                            width:160; height:48
+                            width:180; height:48
                             Column {
                                 anchors { left:parent.left; leftMargin:22; bottom:parent.bottom; bottomMargin:6 }
                                 spacing:4
@@ -664,7 +664,7 @@ Item {
                                 color: {
                                     if (modelData.cmd === "__night__" && root.nightMode) return root.accent
                                     if (modelData.cmd === "__coffee__" && root.coffeeMode) return root.accent
-                                    return faMA.containsMouse ? (modelData.danger===true ? root.accent : root.inkStrong) : root.inkSoft
+                                    return faMA.containsMouse ? root.inkStrong : root.inkSoft
                                 }
                                 Behavior on color { ColorAnimation { duration:150 } }
                             }

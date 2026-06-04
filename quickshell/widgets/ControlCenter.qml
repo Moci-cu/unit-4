@@ -823,7 +823,12 @@ ShellRoot {
         interval: 30000
         repeat: false
         onTriggered: {
-            if (root.btAdapter && root.btAdapter.discovering) root.btAdapter.discovering = false
+            if (root.btAdapter && root.btAdapter.discovering) {
+                try { root.btAdapter.discovering = false } catch (e) {
+                    btScanProc.command = ["sh","-c","bluetoothctl scan off"]
+                    btScanProc.running = true
+                }
+            }
             refreshTimer.restart()
         }
     }
@@ -959,7 +964,7 @@ ShellRoot {
                 }
                 return
             } else if (actionKey === "scan") {
-                if (root.btScanBusy) return
+                if (root.btScanBusy && !root.btDiscovering) return
                 if (!root.btAdapter) {
                     root.btError = "No Bluetooth adapter"
                     return
@@ -1022,13 +1027,13 @@ ShellRoot {
                     cmd =
                         "( " +
                         "  if command -v kitty >/dev/null 2>&1; then " +
-                        "    kitty --class qs-bt-pair --title 'Bluetooth Pair' sh " + pairScript + " " + mac + " & " +
+                        "    kitty --class qs-bt-pair --title 'Bluetooth Pair' bash " + pairScript + " " + mac + " & " +
                         "  elif command -v foot >/dev/null 2>&1; then " +
-                        "    foot --app-id qs-bt-pair sh " + pairScript + " " + mac + " & " +
+                        "    foot --app-id qs-bt-pair bash " + pairScript + " " + mac + " & " +
                         "  elif command -v alacritty >/dev/null 2>&1; then " +
-                        "    alacritty --class qs-bt-pair -e sh " + pairScript + " " + mac + " & " +
+                        "    alacritty --class qs-bt-pair -e bash " + pairScript + " " + mac + " & " +
                         "  elif command -v wezterm >/dev/null 2>&1; then " +
-                        "    wezterm start --class qs-bt-pair -- sh " + pairScript + " " + mac + " & " +
+                        "    wezterm start --class qs-bt-pair -- bash " + pairScript + " " + mac + " & " +
                         "  else notify-send 'Bluetooth' 'No supported terminal found (foot/alacritty/kitty/wezterm)'; fi; " +
                         "  sleep 0.35; hyprctl dispatch focuswindow '^(qs-bt-pair)$' >/dev/null 2>&1; " +
                         ") &"
