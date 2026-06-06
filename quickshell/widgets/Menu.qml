@@ -216,6 +216,15 @@ Item {
         }
     }
 
+    function dispatchDesktop(command) {
+        var escaped = command.replace(/\\/g, "\\\\").replace(/'/g, "\\'")
+        Quickshell.execDetached([
+            "hyprctl",
+            "dispatch",
+            "hl.dsp.exec_cmd('" + escaped + "')"
+        ])
+    }
+
     function launchApp(cmd) {
         if (!cmd) return
         if (cmd === "__lock__") {
@@ -229,9 +238,7 @@ Item {
         } else if (cmd === "__shutdown__") {
             Quickshell.execDetached(["systemctl", "poweroff"])
         } else {
-            var parts = cmd.trim().split(/\s+/)
-            if (parts.length === 0 || parts[0] === "") return
-            Quickshell.execDetached(parts)
+            root.dispatchDesktop(cmd)
         }
         root.closeMenu()
     }
