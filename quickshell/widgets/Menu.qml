@@ -244,7 +244,7 @@ Item {
 
     function lockAndSuspend() {
         Quickshell.execDetached([Quickshell.env("HOME") + "/.config/quickshell/lock.sh"])
-        Quickshell.execDetached(["sh", "-c", "sleep 1 && systemctl suspend"])
+        Quickshell.execDetached(["sh", "-c", "sleep 1.5 && systemctl suspend"])
     }
 
     property string nightStateFile: Quickshell.env("HOME") + "/.config/quickshell/night-mode.state"
