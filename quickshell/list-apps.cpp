@@ -106,8 +106,8 @@ static std::string strip_pct(const std::string& s) {
             ++i; continue;
         }
         if (s[i] == '@' && i + 1 < s.size() && s[i+1] == '@') {
-            i += 2;
-            if (i < s.size() && std::isalpha(static_cast<unsigned char>(s[i])))
+            i += 1;
+            if (i + 1 < s.size() && std::isalpha(static_cast<unsigned char>(s[i + 1])))
                 ++i;
             continue;
         }
