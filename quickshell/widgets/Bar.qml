@@ -43,7 +43,13 @@ Item {
     readonly property int focusedWs: Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1
     property var wsWithApps: ({})
 
-    Component.onCompleted: { refreshApps(); resolveTempSensor(); if (root.hasBattery) root.batPower = Math.abs(root.battery.changeRate).toFixed(1) + "W" }
+    Component.onCompleted: {
+        refreshApps()
+        resolveTempSensor()
+        refreshWifiLabel()
+        wifiInitialRefresh.start()
+        if (root.hasBattery) root.batPower = Math.abs(root.battery.changeRate).toFixed(1) + "W"
+    }
     Connections {
         target: Hyprland
         function onFocusedWorkspaceChanged() { wsRefresh.start() }
@@ -196,17 +202,85 @@ Item {
         }
     }
 
-
-    readonly property string wifiSsid: {
+    readonly property var wifiDevice: {
         var devs = Networking.devices.values
         for (var i = 0; i < devs.length; i++) {
-            if (devs[i].type !== DeviceType.Wifi) continue
-            var nets = devs[i].networks.values
-            for (var j = 0; j < nets.length; j++) {
-                if (nets[j].state === 2) return "NET " + nets[j].name
+            if (devs[i].type === DeviceType.Wifi) return devs[i]
+        }
+        return null
+    }
+    readonly property string nativeWifiSsid: {
+        if (!root.wifiDevice || !root.wifiDevice.networks) return ""
+        var nets = root.wifiDevice.networks.values || root.wifiDevice.networks
+        for (var i = 0; i < nets.length; i++) {
+            if (nets[i].connected || nets[i].state === ConnectionState.Connected)
+                return nets[i].name || ""
+        }
+        return ""
+    }
+    property string wifiSsidName: ""
+    property bool wifiFallbackResolved: false
+    readonly property string wifiSsid: "NET " + (wifiSsidName || "--")
+
+    function refreshWifiLabel() {
+        var nativeName = root.nativeWifiSsid
+        if (nativeName !== "") {
+            root.wifiSsidName = nativeName
+            root.wifiFallbackResolved = false
+            return
+        }
+        if (root.wifiFallbackResolved || wifiNameFallback.running) return
+        wifiNameFallback.command = [
+            "nmcli", "-t", "-f", "NAME,TYPE",
+            "connection", "show", "--active"
+        ]
+        wifiNameFallback.running = true
+    }
+
+    onNativeWifiSsidChanged: refreshWifiLabel()
+
+    Connections {
+        target: root.wifiDevice
+        function onConnectedChanged() {
+            root.wifiFallbackResolved = false
+            root.refreshWifiLabel()
+        }
+        function onStateChanged() {
+            root.wifiFallbackResolved = false
+            root.refreshWifiLabel()
+        }
+    }
+
+    Process {
+        id: wifiNameFallback
+        command: []
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var lines = this.text.trim().split("\n")
+                var suffix = ":802-11-wireless"
+                var name = ""
+                for (var i = 0; i < lines.length; i++) {
+                    if (lines[i].endsWith(suffix)) {
+                        name = lines[i].substring(0, lines[i].length - suffix.length)
+                        name = name.replace(/\\:/g, ":").replace(/\\\\/g, "\\")
+                        break
+                    }
+                }
+                root.wifiSsidName = name
             }
         }
-        return "NET --"
+        onExited: function(code) {
+            root.wifiFallbackResolved = code === 0
+            wifiNameFallback.command = []
+        }
+    }
+
+    Timer {
+        id: wifiInitialRefresh
+        interval: 1000
+        repeat: false
+        onTriggered: root.refreshWifiLabel()
     }
 
     SystemClock { id: sysClock; precision: SystemClock.Minutes }
