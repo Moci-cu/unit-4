@@ -220,35 +220,47 @@ Item {
     }
     property string wifiSsidName: ""
     property bool wifiFallbackResolved: false
+    property string wifiFallbackCandidate: ""
+    property int wifiFallbackAttempts: 0
+    property bool wifiFallbackPending: false
     readonly property string wifiSsid: "NET " + (wifiSsidName || "--")
 
     function refreshWifiLabel() {
         var nativeName = root.nativeWifiSsid
         if (nativeName !== "") {
             root.wifiSsidName = nativeName
-            root.wifiFallbackResolved = false
+            root.wifiFallbackResolved = true
+            root.wifiFallbackAttempts = 0
             return
         }
         if (root.wifiFallbackResolved || wifiNameFallback.running) return
+        root.wifiFallbackCandidate = ""
         wifiNameFallback.command = [
-            "nmcli", "-t", "-f", "NAME,TYPE",
-            "connection", "show", "--active"
+            "nmcli", "-t", "-f", "IN-USE,SSID",
+            "device", "wifi", "list", "--rescan", "no"
         ]
         wifiNameFallback.running = true
     }
 
-    onNativeWifiSsidChanged: refreshWifiLabel()
+    function scheduleWifiRefresh() {
+        root.wifiFallbackResolved = false
+        root.wifiFallbackAttempts = 0
+        if (wifiNameFallback.running) {
+            root.wifiFallbackPending = true
+        } else {
+            wifiFallbackRetry.restart()
+        }
+    }
+
+    onNativeWifiSsidChanged: {
+        if (root.nativeWifiSsid !== "") root.refreshWifiLabel()
+        else root.scheduleWifiRefresh()
+    }
 
     Connections {
         target: root.wifiDevice
-        function onConnectedChanged() {
-            root.wifiFallbackResolved = false
-            root.refreshWifiLabel()
-        }
-        function onStateChanged() {
-            root.wifiFallbackResolved = false
-            root.refreshWifiLabel()
-        }
+        function onConnectedChanged() { root.scheduleWifiRefresh() }
+        function onStateChanged() { root.scheduleWifiRefresh() }
     }
 
     Process {
@@ -258,27 +270,45 @@ Item {
         stdout: StdioCollector {
             onStreamFinished: {
                 var lines = this.text.trim().split("\n")
-                var suffix = ":802-11-wireless"
-                var name = ""
                 for (var i = 0; i < lines.length; i++) {
-                    if (lines[i].endsWith(suffix)) {
-                        name = lines[i].substring(0, lines[i].length - suffix.length)
-                        name = name.replace(/\\:/g, ":").replace(/\\\\/g, "\\")
+                    if (lines[i].indexOf("*:") === 0) {
+                        root.wifiFallbackCandidate = lines[i].substring(2)
+                            .replace(/\\:/g, ":").replace(/\\\\/g, "\\")
                         break
                     }
                 }
-                root.wifiSsidName = name
             }
         }
         onExited: function(code) {
-            root.wifiFallbackResolved = code === 0
             wifiNameFallback.command = []
+            if (code === 0 && root.wifiFallbackCandidate !== "") {
+                root.wifiSsidName = root.wifiFallbackCandidate
+                root.wifiFallbackResolved = true
+                root.wifiFallbackAttempts = 0
+                root.wifiFallbackPending = false
+                return
+            }
+            root.wifiFallbackResolved = false
+            root.wifiFallbackAttempts += 1
+            if (root.wifiFallbackPending || root.wifiFallbackAttempts < 5) {
+                root.wifiFallbackPending = false
+                wifiFallbackRetry.restart()
+            } else {
+                root.wifiSsidName = ""
+            }
         }
     }
 
     Timer {
         id: wifiInitialRefresh
         interval: 1000
+        repeat: false
+        onTriggered: root.refreshWifiLabel()
+    }
+
+    Timer {
+        id: wifiFallbackRetry
+        interval: 800
         repeat: false
         onTriggered: root.refreshWifiLabel()
     }
