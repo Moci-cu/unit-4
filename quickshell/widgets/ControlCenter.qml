@@ -99,7 +99,7 @@ ShellRoot {
             if (wifiEnabled) {
                 acts.push({
                     key: "scan",
-                    label: root.wifiScanBusy ? "◉ Scanning networks..." : "⌕ Scan networks"
+                    label: "⌕ Scan networks"
                 })
                 acts.push({key:"hidden", label:"? Connect hidden network"})
                 for (var i = 0; i < wifiNetworks.length; i++) {
@@ -112,8 +112,8 @@ ShellRoot {
                         label: prefix + n.ssid + "  " + sigBars + lock
                     })
                 }
-                if (wifiNetworks.length === 0 && !root.wifiScanBusy) {
-                    acts.push({key:"noop", label:"No networks found"})
+                if (wifiNetworks.length === 0) {
+                    acts.push({key:"noop", label:"No networks cached"})
                 }
             }
             return acts
@@ -247,7 +247,6 @@ ShellRoot {
         if (key === "top.wifi") {
             if (!wifiEnabled) return "Disabled"
             if (wifiCurrentSSID) return "Connected · " + wifiCurrentSSID
-            if (wifiScanBusy) return "Enabled · Scanning"
             return "Enabled · " + wifiNetworks.length + " network" + (wifiNetworks.length !== 1 ? "s" : "")
         }
         if (key === "top.bluetooth") {
@@ -324,14 +323,25 @@ ShellRoot {
     property string wifiHiddenSSID: ""
     property string wifiError: ""
     property bool   wifiScanBusy: false
+    property string wifiNetworksSignature: ""
     readonly property bool wifiPromptActive: wifiHiddenPrompt || wifiPromptSSID !== ""
 
     function wifiSecurityOpen(security) {
         return !security || security === "None" || security === "--"
     }
 
+    function wifiSignalBand(signal) {
+        return signal >= 75 ? 3 : signal >= 50 ? 2 : signal >= 25 ? 1 : 0
+    }
+
     function rebuildWifi() {
-        if (!root.wifiDevice) { root.wifiNetworks = []; return }
+        if (!root.wifiDevice) {
+            if (root.wifiNetworksSignature !== "[]") {
+                root.wifiNetworksSignature = "[]"
+                root.wifiNetworks = []
+            }
+            return
+        }
         var vals = root.wifiDevice.networks ? (root.wifiDevice.networks.values || root.wifiDevice.networks) : []
         var nets = []
         for (var i = 0; i < vals.length; i++) {
@@ -361,18 +371,26 @@ ShellRoot {
         }
         nets.sort(function(a, b) {
             if (a.active !== b.active) return a.active ? -1 : 1
-            return b.signal - a.signal
+            var bandDiff = root.wifiSignalBand(b.signal) - root.wifiSignalBand(a.signal)
+            return bandDiff !== 0 ? bandDiff : a.ssid.localeCompare(b.ssid)
         })
+        var signatureParts = []
+        for (var k = 0; k < nets.length; k++) {
+            var signalBand = root.wifiSignalBand(nets[k].signal)
+            signatureParts.push([nets[k].ssid, signalBand, nets[k].security, nets[k].active])
+        }
+        var signature = JSON.stringify(signatureParts)
+        if (signature === root.wifiNetworksSignature) return
+        root.wifiNetworksSignature = signature
         root.wifiNetworks = nets
     }
 
     function stopWifiScan() {
         wifiScanKick.stop()
-        wifiScanRefresh.stop()
+        wifiScanPublish.stop()
         wifiScanStop.stop()
         wifiScanBusy = false
         if (root.wifiDevice) root.wifiDevice.scannerEnabled = false
-        rebuildWifi()
     }
 
     function requestWifiScan() {
@@ -381,7 +399,7 @@ ShellRoot {
         root.wifiScanBusy = true
         root.wifiDevice.scannerEnabled = false
         wifiScanKick.restart()
-        wifiScanRefresh.restart()
+        wifiScanPublish.restart()
         wifiScanStop.restart()
     }
 
@@ -454,7 +472,7 @@ ShellRoot {
         interval: 2000; repeat: true
         running: root.open
         onTriggered: {
-            if (root.slot === "top") { root.rebuildWifi(); root.rebuildBt() }
+            if (root.slot === "top") root.rebuildBt()
             if (root.slot === "bottom") root.rebuildSinks()
         }
     }
@@ -787,11 +805,13 @@ ShellRoot {
     }
 
     Timer {
-        id: wifiScanRefresh
-        interval: 1000
-        repeat: true
-        running: false
-        onTriggered: root.rebuildWifi()
+        id: wifiScanPublish
+        interval: 3000
+        repeat: false
+        onTriggered: {
+            root.rebuildWifi()
+            root.stopWifiScan()
+        }
     }
 
     Timer {
