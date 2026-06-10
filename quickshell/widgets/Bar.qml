@@ -38,7 +38,7 @@ Item {
     readonly property color wsAppLine: Qt.rgba(224/255,200/255,136/255,0.5)
 
     readonly property int barHeight: 28
-    readonly property int wsDotWidth: 28
+    readonly property int wsDotWidth: 20
 
     readonly property int focusedWs: Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1
     property var wsWithApps: ({})
@@ -319,8 +319,6 @@ Item {
         return ("0" + h).slice(-2) + ":" + ("0" + m).slice(-2)
     }
 
-    readonly property string tickerText: "接続中 // SCANNING // データ処理 // SYS:ACTIVE // NR-2B@ARCH // 全システム正常 // 起動完了 //"
-
     Variants {
         model: Quickshell.screens
         PanelWindow {
@@ -344,69 +342,128 @@ Item {
                     height: 1; color: root.borderBot
                 }
 
-                Row {
-                    anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                Rectangle {
+                    id: workspaceStrip
+                    anchors {
+                        left: parent.left
+                        leftMargin: 8
+                        verticalCenter: parent.verticalCenter
+                    }
+                    width: workspaceRow.width + 10
+                    height: 24
+                    radius: 4
+                    color: Qt.rgba(18/255, 16/255, 11/255, 0.82)
 
-                    Repeater {
-                        model: 10
-                        delegate: Rectangle {
-                            required property int index
-                            readonly property int wsId: index + 1
-                            readonly property bool isFocused: root.focusedWs === wsId
-                            readonly property bool hasApp: root.wsWithApps[wsId] || false
+                    Row {
+                        id: workspaceRow
+                        anchors.centerIn: parent
+                        width: 10 * root.wsDotWidth
+                        height: parent.height
 
-                            width: root.wsDotWidth
-                            height: parent.height
-                            color: ma.containsMouse ? root.wsHoverBg : "transparent"
+                        Repeater {
+                            model: 10
+                            delegate: Item {
+                                id: workspaceItem
+                                required property int index
+                                readonly property int wsId: index + 1
+                                readonly property bool isFocused: root.focusedWs === wsId
+                                readonly property bool hasApp: root.wsWithApps[wsId] || false
 
-                            Rectangle {
-                                anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-                                height: 2
-                                color: isFocused ? root.wsGold : "transparent"
-                            }
+                                width: root.wsDotWidth
+                                height: workspaceStrip.height
 
-                            Text {
-                                anchors.centerIn: parent
-                                text: wsId
-                                font.family: "Ndot 57"
-                                font.pixelSize: 14
-                                font.letterSpacing: 1
-                                color: isFocused ? root.wsGold : (hasApp ? root.wsGold : (ma.containsMouse ? root.wsHover : root.wsDim))
-                            }
+                                Rectangle {
+                                    anchors.fill: parent
+                                    color: workspaceMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
+                                }
 
-                            MouseArea {
-                                id: ma
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                onClicked: Hyprland.dispatch("workspace " + wsId)
+                                Canvas {
+                                    id: workspaceIcon
+                                    anchors.centerIn: parent
+                                    width: 16
+                                    height: 16
+                                    antialiasing: true
+
+                                    onPaint: {
+                                        var ctx = getContext("2d")
+                                        ctx.clearRect(0, 0, width, height)
+                                        var cx = width / 2
+                                        var cy = height / 2
+
+                                        if (workspaceItem.isFocused) {
+                                            ctx.fillStyle = "#e0c888"
+                                            ctx.beginPath()
+                                            ctx.moveTo(cx, cy)
+                                            ctx.arc(cx, cy, 7, Math.PI * 0.23, Math.PI * 1.77, false)
+                                            ctx.closePath()
+                                            ctx.fill()
+                                        } else if (workspaceItem.hasApp) {
+                                            ctx.fillStyle = "#b8a66f"
+                                            ctx.beginPath()
+                                            ctx.moveTo(2, 14)
+                                            ctx.lineTo(2, 8)
+                                            ctx.bezierCurveTo(2, 2.5, 4.5, 1, 8, 1)
+                                            ctx.bezierCurveTo(11.5, 1, 14, 2.5, 14, 8)
+                                            ctx.lineTo(14, 14)
+                                            ctx.lineTo(11.8, 12.3)
+                                            ctx.lineTo(10, 14)
+                                            ctx.lineTo(8, 12.3)
+                                            ctx.lineTo(6, 14)
+                                            ctx.lineTo(4.2, 12.3)
+                                            ctx.closePath()
+                                            ctx.fill()
+
+                                            ctx.fillStyle = "#3a342a"
+                                            ctx.beginPath()
+                                            ctx.arc(6, 6.8, 1.1, 0, Math.PI * 2)
+                                            ctx.arc(10, 6.8, 1.1, 0, Math.PI * 2)
+                                            ctx.fill()
+                                        } else {
+                                            ctx.strokeStyle = "#89794d"
+                                            ctx.lineWidth = 1.5
+                                            ctx.beginPath()
+                                            ctx.arc(cx, cy, 4.8, 0, Math.PI * 2)
+                                            ctx.stroke()
+
+                                            ctx.fillStyle = "#e0c888"
+                                            ctx.beginPath()
+                                            ctx.arc(cx, cy, 1.9, 0, Math.PI * 2)
+                                            ctx.fill()
+                                        }
+                                    }
+                                }
+
+                                onIsFocusedChanged: workspaceIcon.requestPaint()
+                                onHasAppChanged: workspaceIcon.requestPaint()
+
+                                MouseArea {
+                                    id: workspaceMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: Hyprland.dispatch("workspace " + workspaceItem.wsId)
+                                }
                             }
                         }
-                    }
-
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        leftPadding: 12
-                        text: root.activeTitle ? "// " + root.activeTitle.substring(0, 40) : "---"
-                        font.family: "Ndot 57"
-                        font.pixelSize: 12
-                        font.letterSpacing: 1
-                        color: root.inkDim
                     }
                 }
 
                 Text {
+                    id: activeWindowTitle
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.verticalCenter: parent.verticalCenter
-                    text: root.tickerText
+                    width: Math.max(0, parent.width - 2 * Math.max(workspaceStrip.width + 16, systemStats.width) - 32)
+                    text: root.activeTitle
                     font.family: "Ndot 57"
-                    font.pixelSize: 9
-                    font.letterSpacing: 2
-                    color: Qt.rgba(200/255,184/255,154/255,0.4)
+                    font.pixelSize: 15
+                    font.letterSpacing: 1
+                    font.weight: Font.Medium
+                    color: Qt.rgba(224/255, 200/255, 136/255, 0.72)
                     elide: Text.ElideRight
-                    width: Math.min(implicitWidth, parent.width - 520)
+                    horizontalAlignment: Text.AlignHCenter
                 }
 
                 Row {
+                    id: systemStats
                     anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
 
                     Item {
