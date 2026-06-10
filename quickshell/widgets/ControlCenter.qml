@@ -97,15 +97,23 @@ ShellRoot {
         if (key === "top.wifi") {
             var acts = [{key:"toggle", label: wifiEnabled ? "Disable Wi-Fi" : "Enable Wi-Fi"}]
             if (wifiEnabled) {
+                acts.push({
+                    key: "scan",
+                    label: root.wifiScanBusy ? "◉ Scanning networks..." : "⌕ Scan networks"
+                })
+                acts.push({key:"hidden", label:"? Connect hidden network"})
                 for (var i = 0; i < wifiNetworks.length; i++) {
                     var n = wifiNetworks[i]
                     var prefix = n.active ? "✓ " : "  "
                     var sigBars = n.signal >= 75 ? "▰▰▰" : n.signal >= 50 ? "▰▰▱" : n.signal >= 25 ? "▰▱▱" : "▱▱▱"
-                    var lock = (n.security && n.security !== "" && n.security !== "--") ? " ⚿" : "  "
+                    var lock = root.wifiSecurityOpen(n.security) ? "  " : " ⚿"
                     acts.push({
                         key: "connect:" + n.ssid,
                         label: prefix + n.ssid + "  " + sigBars + lock
                     })
+                }
+                if (wifiNetworks.length === 0 && !root.wifiScanBusy) {
+                    acts.push({key:"noop", label:"No networks found"})
                 }
             }
             return acts
@@ -239,7 +247,8 @@ ShellRoot {
         if (key === "top.wifi") {
             if (!wifiEnabled) return "Disabled"
             if (wifiCurrentSSID) return "Connected · " + wifiCurrentSSID
-            return "Enabled · Scanning"
+            if (wifiScanBusy) return "Enabled · Scanning"
+            return "Enabled · " + wifiNetworks.length + " network" + (wifiNetworks.length !== 1 ? "s" : "")
         }
         if (key === "top.bluetooth") {
             if (!root.btAdapter) return "No adapter"
@@ -311,22 +320,71 @@ ShellRoot {
     }
     property var    wifiNetworks: []
     property string wifiPromptSSID: ""
+    property bool   wifiHiddenPrompt: false
+    property string wifiHiddenSSID: ""
     property string wifiError: ""
+    property bool   wifiScanBusy: false
+    readonly property bool wifiPromptActive: wifiHiddenPrompt || wifiPromptSSID !== ""
+
+    function wifiSecurityOpen(security) {
+        return !security || security === "None" || security === "--"
+    }
 
     function rebuildWifi() {
         if (!root.wifiDevice) { root.wifiNetworks = []; return }
-        var vals = root.wifiDevice.networks.values
+        var vals = root.wifiDevice.networks ? (root.wifiDevice.networks.values || root.wifiDevice.networks) : []
         var nets = []
         for (var i = 0; i < vals.length; i++) {
-            nets.push({
-                ssid: vals[i].name,
-                signal: 0,
-                security: "",
-                active: vals[i].state === 2
-            })
+            var name = vals[i].name || ""
+            if (name === "") continue
+            var strength = typeof vals[i].signalStrength === "number" ? vals[i].signalStrength : 0
+            var entry = {
+                network: vals[i],
+                ssid: name,
+                signal: Math.round(Math.max(0, Math.min(1, strength)) * 100),
+                security: WifiSecurityType.toString(vals[i].security),
+                active: vals[i].state === 2,
+                stateChanging: vals[i].stateChanging || false
+            }
+            var duplicate = -1
+            for (var j = 0; j < nets.length; j++) {
+                if (nets[j].ssid === name) {
+                    duplicate = j
+                    break
+                }
+            }
+            if (duplicate < 0) {
+                nets.push(entry)
+            } else if (entry.active || (!nets[duplicate].active && entry.signal > nets[duplicate].signal)) {
+                nets[duplicate] = entry
+            }
         }
+        nets.sort(function(a, b) {
+            if (a.active !== b.active) return a.active ? -1 : 1
+            return b.signal - a.signal
+        })
         root.wifiNetworks = nets
     }
+
+    function stopWifiScan() {
+        wifiScanKick.stop()
+        wifiScanRefresh.stop()
+        wifiScanStop.stop()
+        wifiScanBusy = false
+        if (root.wifiDevice) root.wifiDevice.scannerEnabled = false
+        rebuildWifi()
+    }
+
+    function requestWifiScan() {
+        if (!root.wifiEnabled || !root.wifiDevice || root.wifiScanBusy) return
+        root.wifiError = ""
+        root.wifiScanBusy = true
+        root.wifiDevice.scannerEnabled = false
+        wifiScanKick.restart()
+        wifiScanRefresh.restart()
+        wifiScanStop.restart()
+    }
+
     onWifiCurrentSSIDChanged: { if (root.open && root.slot === "top") rebuildWifi() }
 
     // ── Données système : Bluetooth (native Quickshell.Bluetooth + CLI fallback) ──
@@ -719,6 +777,40 @@ ShellRoot {
         btRepeatRefresh.running = true
     }
 
+    Timer {
+        id: wifiScanKick
+        interval: 100
+        repeat: false
+        onTriggered: {
+            if (root.wifiDevice && root.wifiScanBusy) root.wifiDevice.scannerEnabled = true
+        }
+    }
+
+    Timer {
+        id: wifiScanRefresh
+        interval: 1000
+        repeat: true
+        running: false
+        onTriggered: root.rebuildWifi()
+    }
+
+    Timer {
+        id: wifiScanStop
+        interval: 8000
+        repeat: false
+        onTriggered: root.stopWifiScan()
+    }
+
+    Timer {
+        id: wifiEnableScanTimer
+        interval: 600
+        repeat: false
+        onTriggered: {
+            if (root.open && root.level === 3 && root.slot === "top" && root.sub === "wifi")
+                root.requestWifiScan()
+        }
+    }
+
     function runBtPowerFallback(enable, unblock) {
         root.btFallbackArmed = false
         root.btBusy = true
@@ -846,21 +938,28 @@ ShellRoot {
     // Process pour submission du password Wi-Fi (sépare actProc pour capture stderr)
     Process {
         id: wifiSubmitProc
-        command: ["sh","-c","true"]
+        command: []
         running: false
-        stdout: StdioCollector {
+        stdout: StdioCollector {}
+        stderr: StdioCollector {
             onStreamFinished: {
-                var output = this.text.trim()
-                if (output.indexOf("successfully activated") >= 0 || output === "") {
-                    root.wifiPromptSSID = ""
-                    root.wifiPasswordInput = ""
-                    root.wifiError = ""
-                } else {
-                    // erreur, on reste sur le prompt
-                    root.wifiError = "Connection failed"
-                }
-                refreshTimer.restart()
+                var err = this.text.trim()
+                if (err !== "") root.wifiError = err.substring(0, 100)
             }
+        }
+        onExited: function(code) {
+            if (code === 0) {
+                root.wifiPromptSSID = ""
+                root.wifiHiddenPrompt = false
+                root.wifiHiddenSSID = ""
+                root.wifiPasswordInput = ""
+                root.wifiError = ""
+                root.requestWifiScan()
+            } else if (root.wifiError === "") {
+                root.wifiError = "Connection failed"
+            }
+            wifiSubmitProc.command = []
+            refreshTimer.restart()
         }
     }
 
@@ -871,20 +970,41 @@ ShellRoot {
     onSlotChanged: {
         cancelWifiPrompt()
         if (slot === "top")    { root.rebuildWifi(); root.rebuildBt() }
+        if (slot !== "top" && root.wifiScanBusy) root.stopWifiScan()
         if (slot === "bottom") { root.rebuildSinks() }
         if (slot === "right")  {
             pollNotifsHistory.running = true
             pollNotifsDnd.running = true
         }
     }
-    onSubChanged: cancelWifiPrompt()
-    onLevelChanged: { if (level !== 3) cancelWifiPrompt() }
-    onOpenChanged:  { if (!open) cancelWifiPrompt() }
+    onSubChanged: {
+        cancelWifiPrompt()
+        if (root.open && root.level === 3 && root.slot === "top" && sub === "wifi") root.requestWifiScan()
+        else if (root.wifiScanBusy) root.stopWifiScan()
+    }
+    onLevelChanged: {
+        if (level !== 3) {
+            cancelWifiPrompt()
+            if (root.wifiScanBusy) root.stopWifiScan()
+        } else if (root.open && root.slot === "top" && root.sub === "wifi") {
+            root.requestWifiScan()
+        }
+    }
+    onOpenChanged: {
+        if (!open) {
+            cancelWifiPrompt()
+            if (root.wifiScanBusy) root.stopWifiScan()
+        } else if (root.level === 3 && root.slot === "top" && root.sub === "wifi") {
+            root.requestWifiScan()
+        }
+    }
 
     // Cancel le prompt Wi-Fi proprement (fermeture du TextInput, reset focus au keyHandler)
     function cancelWifiPrompt() {
-        if (wifiPromptSSID === "") return
+        if (!wifiPromptActive) return
         wifiPromptSSID = ""
+        wifiHiddenPrompt = false
+        wifiHiddenSSID = ""
         wifiPasswordInput = ""
         wifiError = ""
     }
@@ -899,40 +1019,58 @@ ShellRoot {
 
         // ── Wi-Fi ──
         if (slotKey === "top" && subKey === "wifi") {
-            if (actionKey === "toggle") {
-                Networking.wifiEnabled = !wifiEnabled; return
+            if (actionKey === "noop") {
+                return
+            } else if (actionKey === "toggle") {
+                var enableWifi = !wifiEnabled
+                if (!enableWifi && root.wifiScanBusy) root.stopWifiScan()
+                Networking.wifiEnabled = enableWifi
+                if (enableWifi) wifiEnableScanTimer.restart()
+                return
+            } else if (actionKey === "scan") {
+                root.requestWifiScan()
+                return
+            } else if (actionKey === "hidden") {
+                root.wifiPromptSSID = ""
+                root.wifiHiddenSSID = ""
+                root.wifiPasswordInput = ""
+                root.wifiError = ""
+                root.wifiHiddenPrompt = true
+                return
             } else if (actionKey.indexOf("connect:") === 0) {
                 var ssid = actionKey.substring(8)
-                // Trouver le réseau dans la liste pour vérifier la sécurité
                 var net = null
                 for (var i = 0; i < wifiNetworks.length; i++) {
                     if (wifiNetworks[i].ssid === ssid) { net = wifiNetworks[i]; break }
                 }
-                // Si déjà actif, déconnexion
-                if (net && net.active) {
-                    cmd = "nmcli con down id '" + ssid + "' 2>/dev/null || nmcli dev disconnect $(nmcli -t -f DEVICE,TYPE dev | grep wifi | head -1 | cut -d: -f1)"
+                if (!net || !net.network || net.stateChanging) return
+                if (net.active) {
+                    net.network.disconnect()
+                    refreshTimer.restart()
+                    return
                 }
-                // Si réseau ouvert, connexion directe
-                else if (net && (net.security === "" || net.security === "--")) {
-                    cmd = "nmcli dev wifi connect '" + ssid.replace(/'/g, "'\\''") + "'"
-                }
-                // Si réseau sécurisé : ouvrir le prompt
-                else {
+                if (root.wifiSecurityOpen(net.security)) {
+                    net.network.connect()
+                    refreshTimer.restart()
+                    return
+                } else {
                     wifiPromptSSID = ssid
                     wifiError = ""
                     return
                 }
             } else if (actionKey === "submit-password") {
-                // Soumission du mot de passe via le prompt
-                cmd = "nmcli dev wifi connect '" + wifiPromptSSID.replace(/'/g, "'\\''") +
-                      "' password '" + wifiPasswordInput.replace(/'/g, "'\\''") + "' 2>&1"
-                wifiSubmitProc.command = ["sh","-c", cmd]
+                var targetSSID = wifiHiddenPrompt ? wifiHiddenSSID : wifiPromptSSID
+                if (targetSSID.trim() === "" || wifiSubmitProc.running) return
+                if (!wifiHiddenPrompt && wifiPasswordInput === "") return
+                wifiError = ""
+                var wifiCommand = ["nmcli", "device", "wifi", "connect", targetSSID]
+                if (wifiPasswordInput !== "") wifiCommand.push("password", wifiPasswordInput)
+                if (wifiHiddenPrompt) wifiCommand.push("hidden", "yes")
+                wifiSubmitProc.command = wifiCommand
                 wifiSubmitProc.running = true
                 return
             } else if (actionKey === "cancel-prompt") {
-                wifiPromptSSID = ""
-                wifiPasswordInput = ""
-                wifiError = ""
+                root.cancelWifiPrompt()
                 return
             }
         }
@@ -1355,13 +1493,13 @@ ShellRoot {
                 opacity: (root.open && !root.closing) ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: 220 } }
                 // Cède le focus au TextInput Wi-Fi quand le prompt est ouvert
-                focus: root.open && !root.closing && isActive && root.wifiPromptSSID === ""
+                focus: root.open && !root.closing && isActive && !root.wifiPromptActive
 
                 // Reprendre le focus clavier quand le prompt Wi-Fi se ferme
                 Connections {
                     target: root
-                    function onWifiPromptSSIDChanged() {
-                        if (root.wifiPromptSSID === "") {
+                    function onWifiPromptActiveChanged() {
+                        if (!root.wifiPromptActive) {
                             keyHandler.forceActiveFocus()
                         }
                     }
@@ -2320,11 +2458,11 @@ ShellRoot {
                     }
                 }
 
-                // ── Prompt mot de passe Wi-Fi (visible quand wifiPromptSSID est set) ──
+                // ── Prompt de connexion Wi-Fi ──
                 Item {
                     width: parent.width
-                    visible: sl.slotKey === "top" && root.sub === "wifi" && root.wifiPromptSSID !== ""
-                    height: visible ? 110 : 0
+                    visible: sl.slotKey === "top" && root.sub === "wifi" && root.wifiPromptActive
+                    height: visible ? (root.wifiHiddenPrompt ? 154 : 110) : 0
 
                     Item { width: 1; height: 14 }
 
@@ -2336,13 +2474,51 @@ ShellRoot {
                         spacing: 8
 
                         Text {
-                            text: "PASSWORD · " + root.wifiPromptSSID
+                            text: root.wifiHiddenPrompt ? "HIDDEN NETWORK" : "PASSWORD · " + root.wifiPromptSSID
                             font.family: root.ff
                             font.pixelSize: 11
                             font.letterSpacing: 3
                             font.weight: Font.Medium
                             color: root.colInk
                             opacity: 0.7
+                        }
+
+                        Rectangle {
+                            width: parent.width
+                            height: root.wifiHiddenPrompt ? 32 : 0
+                            visible: root.wifiHiddenPrompt
+                            color: root.colCard
+                            border.color: root.colInk
+                            border.width: 1
+
+                            Text {
+                                anchors.fill: parent
+                                anchors.leftMargin: 10
+                                verticalAlignment: Text.AlignVCenter
+                                visible: hiddenSsidInput.text === ""
+                                text: "SSID"
+                                font.family: root.ff
+                                font.pixelSize: 12
+                                color: root.colInk
+                                opacity: 0.45
+                            }
+
+                            TextInput {
+                                id: hiddenSsidInput
+                                anchors.fill: parent
+                                anchors.leftMargin: 10
+                                anchors.rightMargin: 10
+                                verticalAlignment: TextInput.AlignVCenter
+                                color: root.colInk
+                                font.family: root.ff
+                                font.pixelSize: 14
+                                clip: true
+                                activeFocusOnTab: true
+                                focus: root.wifiHiddenPrompt
+                                onTextChanged: root.wifiHiddenSSID = text
+                                onAccepted: pwInput.forceActiveFocus()
+                                Keys.onEscapePressed: root.dispatchAction("top","wifi","cancel-prompt")
+                            }
                         }
 
                         Rectangle {
@@ -2364,10 +2540,21 @@ ShellRoot {
                                 echoMode: TextInput.Password
                                 clip: true
                                 activeFocusOnTab: true
-                                focus: root.wifiPromptSSID !== ""
+                                focus: root.wifiPromptSSID !== "" && !root.wifiHiddenPrompt
                                 onTextChanged: root.wifiPasswordInput = text
                                 onAccepted: root.dispatchAction("top","wifi","submit-password")
                                 Keys.onEscapePressed: root.dispatchAction("top","wifi","cancel-prompt")
+
+                                Text {
+                                    anchors.fill: parent
+                                    verticalAlignment: Text.AlignVCenter
+                                    visible: root.wifiHiddenPrompt && pwInput.text === ""
+                                    text: "PASSWORD · OPTIONAL FOR OPEN NETWORK"
+                                    font.family: root.ff
+                                    font.pixelSize: 11
+                                    color: root.colInk
+                                    opacity: 0.45
+                                }
 
                                 // Timer pour forcer le focus après que le widget soit rendu
                                 // (le focus immédiat est volé par le keyHandler parent)
@@ -2376,7 +2563,7 @@ ShellRoot {
                                     interval: 50
                                     repeat: false
                                     onTriggered: {
-                                        if (root.wifiPromptSSID !== "") {
+                                        if (root.wifiPromptSSID !== "" && !root.wifiHiddenPrompt) {
                                             pwInput.text = ""
                                             pwInput.forceActiveFocus()
                                         }
@@ -2385,14 +2572,21 @@ ShellRoot {
                                 Connections {
                                     target: root
                                     function onWifiPromptSSIDChanged() {
-                                        if (root.wifiPromptSSID !== "") {
+                                        if (root.wifiPromptSSID !== "" && !root.wifiHiddenPrompt) {
                                             pwFocusTimer.restart()
+                                        }
+                                    }
+                                    function onWifiHiddenPromptChanged() {
+                                        if (root.wifiHiddenPrompt) {
+                                            hiddenSsidInput.text = ""
+                                            pwInput.text = ""
+                                            hiddenSsidInput.forceActiveFocus()
                                         }
                                     }
                                 }
                                 // Au cas où le widget devient visible avant que la propriété change
                                 onVisibleChanged: {
-                                    if (visible && root.wifiPromptSSID !== "") {
+                                    if (visible && root.wifiPromptSSID !== "" && !root.wifiHiddenPrompt) {
                                         pwFocusTimer.restart()
                                     }
                                 }
