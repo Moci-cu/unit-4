@@ -19,24 +19,27 @@ ShellRoot {
         id: polkitAgent
     }
 
-    Variants {
-        model: Quickshell.screens
-        PanelWindow {
-            required property var modelData
-            screen: modelData
-            anchors.top: true; anchors.left: true; anchors.right: true; anchors.bottom: true
-            exclusionMode: ExclusionMode.Ignore
-            color: "transparent"
-            WlrLayershell.namespace: "quickshell:polkit"
-            WlrLayershell.keyboardFocus: polkitAgent.isActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-            WlrLayershell.layer: WlrLayer.Overlay
-            implicitWidth: modelData.width
-            implicitHeight: modelData.height
-            visible: polkitAgent.isActive
+    readonly property var polkitScreen: {
+        var screens = Quickshell.screens.values || Quickshell.screens
+        var focusedName = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
+        for (var i = 0; i < screens.length; i++) {
+            if (screens[i].name === focusedName) return screens[i]
+        }
+        return screens.length > 0 ? screens[0] : null
+    }
 
-            PolkitDialog {
-                anchors.fill: parent
-            }
+    PanelWindow {
+        screen: root.polkitScreen
+        anchors.top: true; anchors.left: true; anchors.right: true; anchors.bottom: true
+        exclusionMode: ExclusionMode.Ignore
+        color: "transparent"
+        WlrLayershell.namespace: "quickshell:polkit"
+        WlrLayershell.keyboardFocus: polkitAgent.isActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+        WlrLayershell.layer: WlrLayer.Overlay
+        visible: polkitAgent.isActive
+
+        PolkitDialog {
+            anchors.fill: parent
         }
     }
 
