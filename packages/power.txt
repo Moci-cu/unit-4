@@ -1,0 +1,5 @@
+# Optional laptop power-profile integration.
+# tlp-pd provides tlpctl and conflicts with power-profiles-daemon.
+tlp
+tlp-pd
+tlp-rdw

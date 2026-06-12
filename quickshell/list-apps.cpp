@@ -105,8 +105,27 @@ static std::string strip_pct(const std::string& s) {
         if (s[i] == '%' && i + 1 < s.size() && std::isalpha(static_cast<unsigned char>(s[i + 1]))) {
             ++i; continue;
         }
+        if (s[i] == '@' && i + 1 < s.size() && s[i+1] == '@') {
+            i += 1;
+            if (i + 1 < s.size() && std::isalpha(static_cast<unsigned char>(s[i + 1])))
+                ++i;
+            continue;
+        }
         r.push_back(s[i]);
     }
+    // Strip --file-forwarding (Flatpak flag, only useful with @@ markers)
+    auto pos = r.find("--file-forwarding");
+    if (pos != std::string::npos) {
+        auto end = r.find_first_not_of(' ', pos + 17);
+        r.erase(pos, end != std::string::npos ? end - pos : 17);
+    }
+    // Collapse multiple spaces
+    auto new_end = std::unique(r.begin(), r.end(), [](char a, char b) {
+        return a == ' ' && b == ' ';
+    });
+    r.erase(new_end, r.end());
+    // Trim trailing space
+    while (!r.empty() && r.back() == ' ') r.pop_back();
     return r;
 }
 

@@ -1,11 +1,9 @@
 [Unit]
 Description=Quickshell wave video checker
 After=graphical-session.target
+PartOf=hyprland-session.target
 
 [Service]
 Type=oneshot
 ExecStart=%h/.config/quickshell/wave-check.sh
 RemainAfterExit=yes
-
-[Install]
-WantedBy=default.target

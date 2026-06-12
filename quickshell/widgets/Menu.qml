@@ -43,8 +43,18 @@ Item {
     property int  nightTemp: 4000
 
     // ── TLP current profile ──
-    // ── TLP current profile ──
     property string tlpProfile: ""
+    readonly property string powerProfileHelper: Quickshell.env("HOME") + "/.config/hypr/scripts/power-profile.sh"
+    readonly property string powerProfileState: Quickshell.env("XDG_RUNTIME_DIR") + "/dots-power-profile.state"
+
+    FileView {
+        id: tlpProfileFile
+        path: root.powerProfileState
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: root.tlpProfile = text().trim()
+    }
 
     // ── Coffee mode (keep screen awake) ──
     property bool coffeeMode: false
@@ -76,7 +86,7 @@ Item {
     }
     Process {
         id: tlpGetProc
-        command: ["tlpctl", "get"]
+        command: [root.powerProfileHelper, "sync"]
         running: false
         stdout: StdioCollector {
             onStreamFinished: { root.tlpProfile = this.text.trim() || "" }
@@ -90,9 +100,9 @@ Item {
         { id: "S03", name: "Sleep",            cmd: "__sleep__",     desktopId: "__sleep__",     meta: "systemctl",  keywords: "sleep suspend standby",             icon: "◈", cat: "sys" },
         { id: "S04", name: "Reboot",           cmd: "__reboot__",    desktopId: "__reboot__",    meta: "systemctl",  keywords: "reboot restart",                    icon: "↻", cat: "sys" },
         { id: "S05", name: "Shut Down",        cmd: "__shutdown__",  desktopId: "__shutdown__",  meta: "systemctl",  keywords: "shutdown poweroff halt power off",  icon: "⏻", cat: "sys" },
-        { id: "S06", name: "Power: Performance", cmd: "tlpctl performance", desktopId: "tlpctl performance", meta: "tlpctl", keywords: "power performance profile tlpctl", icon: "⬡", cat: "sys" },
-        { id: "S08", name: "Power: Balanced",    cmd: "tlpctl balanced",    desktopId: "tlpctl balanced",    meta: "tlpctl", keywords: "power balanced profile tlpctl",    icon: "⬡", cat: "sys" },
-        { id: "S09", name: "Power: Power-saver", cmd: "tlpctl power-saver", desktopId: "tlpctl power-saver", meta: "tlpctl", keywords: "power saver profile tlpctl",   icon: "⬡", cat: "sys" }
+        { id: "S06", name: "Power: Performance", cmd: "__tlp__:performance", desktopId: "__tlp__:performance", meta: "tlpctl", keywords: "power performance profile tlpctl", icon: "⬡", cat: "sys" },
+        { id: "S08", name: "Power: Balanced",    cmd: "__tlp__:balanced",    desktopId: "__tlp__:balanced",    meta: "tlpctl", keywords: "power balanced profile tlpctl",    icon: "⬡", cat: "sys" },
+        { id: "S09", name: "Power: Power-saver", cmd: "__tlp__:power-saver", desktopId: "__tlp__:power-saver", meta: "tlpctl", keywords: "power saver profile tlpctl",   icon: "⬡", cat: "sys" }
     ]
 
     readonly property var catLabels: ({
@@ -216,6 +226,15 @@ Item {
         }
     }
 
+    function dispatchDesktop(command) {
+        var escaped = command.replace(/\\/g, "\\\\").replace(/'/g, "\\'")
+        Quickshell.execDetached([
+            "hyprctl",
+            "dispatch",
+            "hl.dsp.exec_cmd('" + escaped + "')"
+        ])
+    }
+
     function launchApp(cmd) {
         if (!cmd) return
         if (cmd === "__lock__") {
@@ -228,10 +247,10 @@ Item {
             Quickshell.execDetached(["systemctl", "reboot"])
         } else if (cmd === "__shutdown__") {
             Quickshell.execDetached(["systemctl", "poweroff"])
+        } else if (cmd.indexOf("__tlp__:") === 0) {
+            Quickshell.execDetached([root.powerProfileHelper, "set", cmd.substring(8)])
         } else {
-            var parts = cmd.trim().split(/\s+/)
-            if (parts.length === 0 || parts[0] === "") return
-            Quickshell.execDetached(parts)
+            root.dispatchDesktop(cmd)
         }
         root.closeMenu()
     }
@@ -244,7 +263,7 @@ Item {
 
     function lockAndSuspend() {
         Quickshell.execDetached([Quickshell.env("HOME") + "/.config/quickshell/lock.sh"])
-        Quickshell.execDetached(["sh", "-c", "sleep 1 && systemctl suspend"])
+        Quickshell.execDetached(["sh", "-c", "sleep 1.5 && systemctl suspend"])
     }
 
     property string nightStateFile: Quickshell.env("HOME") + "/.config/quickshell/night-mode.state"

@@ -1,52 +1,32 @@
 # Tested versions
 
-This config is known to work with the following versions of its main
-dependencies, last tested on 2026-04-25.
+Last verified on 2026-06-12 using CachyOS.
 
-## Main components
+| Component | Tested version |
+|---|---:|
+| Hyprland | 0.55.3 |
+| Hyprlock | 0.9.5 |
+| Hypridle | 0.1.7 |
+| Quickshell | 0.3.0 |
+| awww | 0.12.1 |
+| NetworkManager | 1.56.1 |
+| iwd backend | 3.12 |
+| PipeWire | 1.6.6 |
+| TLP / tlp-pd | 1.10.1 |
 
-| Component         | Version              |
-|-------------------|----------------------|
-| Hyprland          | 0.54.3-2             |
-| Hyprlock          | 0.9.5-1              |
-| Hypridle          | 0.1.7-8              |
-| Kitty             | 0.46.2-1             |
-| Quickshell (git)  | 0.2.0.r136.gfb08ece-1 |
-| awww (AUR)        | 0.12.0-1             |
-| Arch Linux        | rolling              |
+Arch and CachyOS are rolling distributions. These versions describe the most
+recent validated environment; they are not strict pins.
 
-## Updating this list
+The installer deliberately performs a full `pacman -Syu` transaction and does
+not fetch isolated historical packages from the Arch Linux Archive. Partial
+upgrades are unsupported on Arch.
 
-After verifying the config works, the maintainer regenerates pinned
-versions with:
+When a current package update causes a regression:
 
-```bash
-./scripts/update-pins.sh
-```
+1. Confirm the failure in `journalctl`.
+2. Check the package's upstream issue tracker.
+3. Use an existing package from `/var/cache/pacman/pkg` only as a temporary
+   rollback.
+4. Add the package to `IgnorePkg` only while tracking the incompatibility.
 
-This updates `packages/pinned-pacman.txt` and `packages/pinned-aur.txt`.
-
-## How to install pinned versions
-
-If the latest versions break something on your system:
-
-```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/samyns/Unit-3/main/install.sh) --pinned
-```
-
-See the README's "When things break" section for details.
-
-## Manually pinning a single package
-
-If you want to downgrade just one package (e.g., Hyprland):
-
-```bash
-sudo pacman -U https://archive.archlinux.org/packages/h/hyprland/hyprland-0.54.3-2-x86_64.pkg.tar.zst
-```
-
-Replace with the exact version you need from
-https://archive.archlinux.org/packages/.
-
-## Known issues with newer versions
-
-(none yet — please open an issue if you encounter compatibility problems)
+See [Troubleshooting](docs/TROUBLESHOOTING.md) for service-specific checks.
