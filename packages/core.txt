@@ -1,0 +1,58 @@
+# Build and source tools
+base-devel
+git
+
+# Hyprland session
+hyprland
+hyprlock
+hypridle
+hyprsunset
+hyprshot
+
+# Shell and terminal
+quickshell
+awww
+kitty
+qt6-wayland
+qt6-multimedia-ffmpeg
+fontconfig
+
+# Desktop integration
+xdg-desktop-portal
+xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
+polkit
+upower
+libnotify
+
+# Network, Bluetooth, and audio
+networkmanager
+bluez
+bluez-utils
+pipewire
+pipewire-alsa
+pipewire-pulse
+wireplumber
+
+# User-facing tools used by the config
+brightnessctl
+playerctl
+grim
+slurp
+wl-clipboard
+udiskie
+udisks2
+yazi
+
+# Media, scripts, and optional widgets
+ffmpeg
+curl
+jq
+nodejs
+python
+python-pillow
+python-qrcode
+cloudflared
+
+# Font fallback for icon glyphs
+ttf-jetbrains-mono-nerd

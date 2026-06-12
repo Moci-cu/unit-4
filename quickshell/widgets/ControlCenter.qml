@@ -391,10 +391,16 @@ ShellRoot {
         wifiScanStop.stop()
         wifiScanBusy = false
         if (root.wifiDevice) root.wifiDevice.scannerEnabled = false
+        if (wifiScanProc.running) wifiScanProc.running = false
+        wifiScanProc.command = []
     }
 
     function requestWifiScan() {
-        if (!root.wifiEnabled || !root.wifiDevice || root.wifiScanBusy) return
+        if (!root.wifiEnabled || root.wifiScanBusy) return
+        if (!root.wifiDevice) {
+            root.wifiError = "Wi-Fi adapter unavailable"
+            return
+        }
         root.wifiError = ""
         root.wifiScanBusy = true
         root.wifiDevice.scannerEnabled = false
@@ -404,6 +410,12 @@ ShellRoot {
     }
 
     onWifiCurrentSSIDChanged: { if (root.open && root.slot === "top") rebuildWifi() }
+    onWifiDeviceChanged: {
+        root.rebuildWifi()
+        if (root.wifiDevice && root.open && root.level === 3
+                && root.slot === "top" && root.sub === "wifi")
+            wifiEnableScanTimer.restart()
+    }
 
     // ── Données système : Bluetooth (native Quickshell.Bluetooth + CLI fallback) ──
     readonly property var btAdapter: Bluetooth.defaultAdapter
@@ -800,25 +812,57 @@ ShellRoot {
         interval: 100
         repeat: false
         onTriggered: {
-            if (root.wifiDevice && root.wifiScanBusy) root.wifiDevice.scannerEnabled = true
+            if (!root.wifiDevice || !root.wifiScanBusy) return
+            root.wifiDevice.scannerEnabled = true
+            wifiScanProc.command = [
+                "nmcli", "--wait", "8", "device", "wifi", "list",
+                "--rescan", "yes"
+            ]
+            wifiScanProc.running = true
+        }
+    }
+
+    Process {
+        id: wifiScanProc
+        command: []
+        running: false
+        stdout: StdioCollector {}
+        stderr: StdioCollector {
+            onStreamFinished: {
+                var message = this.text.trim()
+                if (message !== "" && root.wifiScanBusy)
+                    root.wifiError = message.substring(0, 100)
+            }
+        }
+        onExited: function(code) {
+            wifiScanProc.command = []
+            if (!root.wifiScanBusy) return
+            if (code !== 0 && root.wifiError === "")
+                root.wifiError = "Network scan failed"
+            root.rebuildWifi()
+            wifiScanPublish.restart()
         }
     }
 
     Timer {
         id: wifiScanPublish
-        interval: 3000
+        interval: 1200
         repeat: false
         onTriggered: {
             root.rebuildWifi()
-            root.stopWifiScan()
+            if (wifiScanProc.running) restart()
+            else root.stopWifiScan()
         }
     }
 
     Timer {
         id: wifiScanStop
-        interval: 8000
+        interval: 10000
         repeat: false
-        onTriggered: root.stopWifiScan()
+        onTriggered: {
+            if (root.wifiError === "") root.wifiError = "Network scan timed out"
+            root.stopWifiScan()
+        }
     }
 
     Timer {
@@ -1412,6 +1456,16 @@ ShellRoot {
         function toggle(): void { root.toggle() }
         function show(): void   { if (!root.open) root.toggle() }
         function hide(): void   { root.close() }
+        function scanWifi(): void { root.requestWifiScan() }
+        function wifiStatus(): string {
+            return JSON.stringify({
+                enabled: root.wifiEnabled,
+                device: root.wifiDevice !== null,
+                scanning: root.wifiScanBusy,
+                networks: root.wifiNetworks.length,
+                error: root.wifiError
+            })
+        }
     }
 
     // ── Navigation ──

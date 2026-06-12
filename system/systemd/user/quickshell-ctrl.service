@@ -1,13 +1,11 @@
 [Unit]
 Description=Unit-3 Control Center
-After=quickshell.service
+After=graphical-session.target quickshell.service
+PartOf=hyprland-session.target
+StartLimitBurst=5
+StartLimitIntervalSec=30
 
 [Service]
 ExecStart=/usr/bin/qs -p %h/.config/quickshell/widgets/ControlCenter.qml
 Restart=always
 RestartSec=3
-StartLimitBurst=5
-StartLimitIntervalSec=30
-
-[Install]
-WantedBy=default.target
