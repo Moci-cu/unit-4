@@ -16,8 +16,18 @@ mkdir -p \
     "$TMP/home/.config/hypr" \
     "$TMP/home/.local/share"
 
-printf '#!/usr/bin/env bash\nexit 0\n' > "$TMP/bin/systemctl"
-printf '#!/usr/bin/env bash\nexit 0\n' > "$TMP/bin/systemd-analyze"
+cat > "$TMP/bin/systemctl" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${FAKE_USER_MANAGER_UNAVAILABLE:-}" == "1" && "$*" == "--user show-environment" ]]; then
+    exit 1
+fi
+exit 0
+EOF
+cat > "$TMP/bin/systemd-analyze" <<'EOF'
+#!/usr/bin/env bash
+[[ "${FAKE_USER_MANAGER_UNAVAILABLE:-}" != "1" ]] || exit 99
+exit 0
+EOF
 chmod +x "$TMP/bin/systemctl" "$TMP/bin/systemd-analyze"
 
 printf 'monitor = test\n' > "$TMP/home/.config/hypr/user.conf"
@@ -39,6 +49,32 @@ run_installer() {
         --no-pam \
         "$@"
 }
+
+run_interactive_installer() {
+    printf 'n\nn\n' | \
+        HOME="$TMP/home" \
+        XDG_CONFIG_HOME="$TMP/home/.config" \
+        XDG_DATA_HOME="$TMP/home/.local/share" \
+        PATH="$TMP/bin:$PATH" \
+        HYPRLAND_INSTANCE_SIGNATURE="" \
+            "$ROOT/install.sh" \
+            --source-dir "$ROOT" \
+            --no-packages \
+            --no-services \
+            --no-pam \
+            --no-backup
+}
+
+mkdir -p "$TMP/incomplete"
+touch "$TMP/incomplete/install.sh"
+if HOME="$TMP/home" PATH="$TMP/bin:$PATH" \
+    "$ROOT/install.sh" --yes --source-dir "$TMP/incomplete" \
+    --no-packages --no-services --no-pam --no-backup \
+    >"$TMP/incomplete.log" 2>&1; then
+    fail "an incomplete source tree was accepted"
+fi
+grep -q "Incomplete unit-4 source tree: missing directory hypr" "$TMP/incomplete.log" \
+    || fail "incomplete source error did not name the missing path"
 
 run_installer
 
@@ -64,7 +100,11 @@ find "$TMP/home/.local/state/unit-4/backups" -type f -name user.conf \
     -print -quit | grep -q . \
     || fail "existing configuration was not backed up"
 
+export FAKE_USER_MANAGER_UNAVAILABLE=1
 run_installer --no-backup
+unset FAKE_USER_MANAGER_UNAVAILABLE
+
+run_interactive_installer
 
 [[ "$(cat "$TMP/home/.config/hypr/user.conf")" == "monitor = test" ]] \
     || fail "user.conf was overwritten on rerun"

@@ -22,6 +22,12 @@ INSTALL_SHELL=false
 INSTALL_POWER=false
 BACKUP_EXISTING=true
 FONT_DIR=""
+INSTALL_PACKAGES_SET=false
+ENABLE_SERVICES_SET=false
+INSTALL_PAM_SET=false
+INSTALL_SHELL_SET=false
+INSTALL_POWER_SET=false
+BACKUP_EXISTING_SET=false
 
 usage() {
     cat <<'EOF'
@@ -67,17 +73,17 @@ while (($#)); do
             SOURCE_DIR="$2"
             shift
             ;;
-        --no-packages) INSTALL_PACKAGES=false ;;
-        --no-services) ENABLE_SERVICES=false ;;
-        --no-pam) INSTALL_PAM=false ;;
-        --with-shell) INSTALL_SHELL=true ;;
-        --with-power) INSTALL_POWER=true ;;
+        --no-packages) INSTALL_PACKAGES=false; INSTALL_PACKAGES_SET=true ;;
+        --no-services) ENABLE_SERVICES=false; ENABLE_SERVICES_SET=true ;;
+        --no-pam) INSTALL_PAM=false; INSTALL_PAM_SET=true ;;
+        --with-shell) INSTALL_SHELL=true; INSTALL_SHELL_SET=true ;;
+        --with-power) INSTALL_POWER=true; INSTALL_POWER_SET=true ;;
         --font-dir)
             (($# >= 2)) || { echo "Missing value for --font-dir" >&2; exit 2; }
             FONT_DIR="$2"
             shift
             ;;
-        --no-backup) BACKUP_EXISTING=false ;;
+        --no-backup) BACKUP_EXISTING=false; BACKUP_EXISTING_SET=true ;;
         -h|--help) usage; exit 0 ;;
         *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
     esac
@@ -164,18 +170,30 @@ preflight() {
 
 collect_choices() {
     if ! $ASSUME_YES; then
-        ask "Install/update required pacman packages?" yes \
-            && INSTALL_PACKAGES=true || INSTALL_PACKAGES=false
-        ask "Enable NetworkManager and Bluetooth services?" yes \
-            && ENABLE_SERVICES=true || ENABLE_SERVICES=false
-        ask "Install the Quickshell lockscreen PAM service?" yes \
-            && INSTALL_PAM=true || INSTALL_PAM=false
-        ask "Install the optional Unit-4 bashrc?" no \
-            && INSTALL_SHELL=true || INSTALL_SHELL=false
-        ask "Install optional TLP power-profile integration?" no \
-            && INSTALL_POWER=true || INSTALL_POWER=false
-        ask "Back up existing managed files?" yes \
-            && BACKUP_EXISTING=true || BACKUP_EXISTING=false
+        if ! $INSTALL_PACKAGES_SET; then
+            ask "Install/update required pacman packages?" yes \
+                && INSTALL_PACKAGES=true || INSTALL_PACKAGES=false
+        fi
+        if ! $ENABLE_SERVICES_SET; then
+            ask "Enable NetworkManager and Bluetooth services?" yes \
+                && ENABLE_SERVICES=true || ENABLE_SERVICES=false
+        fi
+        if ! $INSTALL_PAM_SET; then
+            ask "Install the Quickshell lockscreen PAM service?" yes \
+                && INSTALL_PAM=true || INSTALL_PAM=false
+        fi
+        if ! $INSTALL_SHELL_SET; then
+            ask "Install the optional Unit-4 bashrc?" no \
+                && INSTALL_SHELL=true || INSTALL_SHELL=false
+        fi
+        if ! $INSTALL_POWER_SET; then
+            ask "Install optional TLP power-profile integration?" no \
+                && INSTALL_POWER=true || INSTALL_POWER=false
+        fi
+        if ! $BACKUP_EXISTING_SET; then
+            ask "Back up existing managed files?" yes \
+                && BACKUP_EXISTING=true || BACKUP_EXISTING=false
+        fi
     fi
 }
 
@@ -197,20 +215,54 @@ start_sudo_session() {
     SUDO_KEEPALIVE_PID=$!
 }
 
+validate_full_source_tree() {
+    local root="$1"
+    local path
+    local -a required_dirs=(
+        hypr
+        quickshell
+        kitty
+        system/systemd/user
+    )
+    local -a required_files=(
+        install.sh
+        hypr/gen-lockbg.cpp
+        quickshell/shell.qml
+        quickshell/list-apps.cpp
+        quickshell/pixel_video.cpp
+        packages/core.txt
+        system/systemd/user/hyprland-session.target
+        system/systemd/user/quickshell.service
+        system/pam.d/qs-lock
+    )
+
+    $INSTALL_POWER && required_files+=(packages/power.txt)
+    $INSTALL_SHELL && required_files+=(bash/.bashrc)
+
+    for path in "${required_dirs[@]}"; do
+        [[ -d "$root/$path" ]] \
+            || fatal "Incomplete unit-4 source tree: missing directory $path under $root"
+    done
+    for path in "${required_files[@]}"; do
+        [[ -f "$root/$path" ]] \
+            || fatal "Incomplete unit-4 source tree: missing file $path under $root"
+    done
+}
+
 detect_local_source() {
     local script_path script_dir
     script_path="${BASH_SOURCE[0]:-}"
     [[ -f "$script_path" ]] || return 1
     script_dir="$(cd -- "$(dirname -- "$script_path")" && pwd)"
-    [[ -d "$script_dir/hypr" && -d "$script_dir/quickshell" ]] || return 1
+    [[ -f "$script_dir/install.sh" ]] || return 1
     SOURCE_DIR="$script_dir"
+    validate_full_source_tree "$SOURCE_DIR"
 }
 
 prepare_source() {
     if [[ -n "$SOURCE_DIR" ]]; then
         SOURCE_DIR="$(realpath "$SOURCE_DIR")"
-        [[ -f "$SOURCE_DIR/install.sh" && -d "$SOURCE_DIR/quickshell" ]] \
-            || fatal "Invalid unit-4 source directory: $SOURCE_DIR"
+        validate_full_source_tree "$SOURCE_DIR"
         ok "Using local source: $SOURCE_DIR"
         return
     fi
@@ -232,6 +284,7 @@ prepare_source() {
     log "Cloning $REPO_URL ($REPO_BRANCH)..."
     git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" "$WORK_DIR/repo"
     SOURCE_DIR="$WORK_DIR/repo"
+    validate_full_source_tree "$SOURCE_DIR"
 }
 
 read_package_file() {
@@ -472,11 +525,15 @@ validate_install() {
         [[ -e "$file" ]] || { warn "Missing installed file: $file"; failed=true; }
     done
 
-    systemd-analyze --user verify \
-        "$CONFIG_HOME/systemd/user/hyprland-session.target" \
-        "$CONFIG_HOME/systemd/user/quickshell.service" \
-        "$CONFIG_HOME/systemd/user/quickshell-ctrl.service" \
-        >/dev/null || failed=true
+    if systemctl --user show-environment >/dev/null 2>&1; then
+        systemd-analyze --user verify \
+            "$CONFIG_HOME/systemd/user/hyprland-session.target" \
+            "$CONFIG_HOME/systemd/user/quickshell.service" \
+            "$CONFIG_HOME/systemd/user/quickshell-ctrl.service" \
+            >/dev/null || failed=true
+    else
+        warn "User manager is unavailable; systemd unit verification was deferred."
+    fi
 
     $failed && fatal "Installation validation failed. Review the warnings above."
     ok "Installation validation passed."

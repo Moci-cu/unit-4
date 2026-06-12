@@ -232,7 +232,7 @@ When testing another branch:
 ./install.sh --branch hyprland-lua
 ```
 
-`--branch` matters only for remote installs. A local checkout always installs
+`--branch` applies only to remote installs. A local checkout always installs
 its current working tree, including uncommitted changes.
 
 ## Removing unit-4

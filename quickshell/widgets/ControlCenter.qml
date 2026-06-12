@@ -2726,7 +2726,6 @@ ShellRoot {
                                 font.pixelSize: 14
                                 clip: true
                                 activeFocusOnTab: true
-                                focus: root.wifiHiddenPrompt
                                 onTextChanged: root.wifiHiddenSSID = text
                                 onAccepted: pwInput.forceActiveFocus()
                                 Keys.onEscapePressed: root.dispatchAction("top","wifi","cancel-prompt")
@@ -2781,6 +2780,16 @@ ShellRoot {
                                         }
                                     }
                                 }
+                                Timer {
+                                    id: hiddenSsidFocusTimer
+                                    interval: 50
+                                    repeat: false
+                                    onTriggered: {
+                                        if (root.wifiHiddenPrompt) {
+                                            hiddenSsidInput.forceActiveFocus()
+                                        }
+                                    }
+                                }
                                 Connections {
                                     target: root
                                     function onWifiPromptSSIDChanged() {
@@ -2792,7 +2801,7 @@ ShellRoot {
                                         if (root.wifiHiddenPrompt) {
                                             hiddenSsidInput.text = ""
                                             pwInput.text = ""
-                                            hiddenSsidInput.forceActiveFocus()
+                                            hiddenSsidFocusTimer.restart()
                                         }
                                     }
                                 }

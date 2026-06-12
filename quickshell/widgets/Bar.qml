@@ -585,7 +585,9 @@ Item {
                                     font.family: "Ndot 57"
                                     font.pixelSize: 16
                                     font.letterSpacing: 1
-                                    color: parseFloat(root.cpuVal) > 12 ? "#c86060" : (root.cpuVal !== "--" ? root.statusText : root.statusDim)
+                                    color: isNaN(parseFloat(root.cpuVal))
+                                        ? root.statusDim
+                                        : (parseFloat(root.cpuVal) > 12 ? "#c86060" : root.statusText)
                                 }
                             }
                             Row {
@@ -649,7 +651,7 @@ Item {
                                     font.family: "Ndot 57"
                                     font.pixelSize: 16
                                     font.letterSpacing: 1
-                                    color: root.memVal !== "--" ? root.statusText : root.statusDim
+                                    color: root.memVal !== "--%" ? root.statusText : root.statusDim
                                 }
                             }
 
