@@ -786,8 +786,8 @@ Item {
                                             ctx.fillStyle = root.wsGold
                                             ctx.fill()
                                         } else if (root.batteryPowerSaver) {
-                                            ctx.fillStyle = "#62b85f"
-                                            ctx.strokeStyle = "#62b85f"
+                                            ctx.fillStyle = root.wsGold
+                                            ctx.strokeStyle = root.wsGold
                                             ctx.lineWidth = 1.4
 
                                             ctx.beginPath()

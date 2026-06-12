@@ -338,6 +338,9 @@ deploy_configs() {
         fi
 
         cp -a "$STAGE_DIR/$name/." "$dest/"
+        if [[ "$name" == "quickshell" ]]; then
+            rm -f "$dest/scripts/bt-pair.sh"
+        fi
 
         if [[ -n "$preserve" ]]; then
             [[ ! -f "$preserve/user.conf" ]] || cp -a "$preserve/user.conf" "$dest/user.conf"

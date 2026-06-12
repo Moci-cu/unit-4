@@ -22,6 +22,8 @@ chmod +x "$TMP/bin/systemctl" "$TMP/bin/systemd-analyze"
 
 printf 'monitor = test\n' > "$TMP/home/.config/hypr/user.conf"
 printf 'keep me\n' > "$TMP/home/.config/hypr/local-only.conf"
+mkdir -p "$TMP/home/.config/quickshell/scripts"
+printf 'legacy terminal pairing\n' > "$TMP/home/.config/quickshell/scripts/bt-pair.sh"
 
 run_installer() {
     HOME="$TMP/home" \
@@ -52,6 +54,8 @@ run_installer
     || fail "Hyprland session target was not installed"
 [[ ! -e "$TMP/home/.config/systemd/user/wifi-powersave-off.service" ]] \
     || fail "legacy Wi-Fi power-save override was installed"
+[[ ! -e "$TMP/home/.config/quickshell/scripts/bt-pair.sh" ]] \
+    || fail "legacy Bluetooth terminal pairing helper was retained"
 [[ "$(cat "$TMP/home/.config/hypr/user.conf")" == "monitor = test" ]] \
     || fail "user.conf was overwritten"
 [[ "$(cat "$TMP/home/.config/hypr/local-only.conf")" == "keep me" ]] \
