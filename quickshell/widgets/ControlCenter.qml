@@ -485,6 +485,7 @@ ShellRoot {
         var device = root.findBtDevice(mac)
         if (!device) {
             root.btError = "Bluetooth device unavailable"
+            root.btDeviceBusy = false
             return
         }
 
